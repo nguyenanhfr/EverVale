@@ -209,3 +209,24 @@ Runtime-only scope:
 - create no command receipt for read checkpoints
 
 M1.7 exit is PASS on PR #5: preflight, TypeScript, unit, production build, browser/API E2E, migration first-run + safe rerun, and PostgreSQL integration are green.
+
+
+## M1.8 persisted state integrity & recovery
+
+See:
+`docs/79_M1_8_PERSISTED_STATE_INTEGRITY_RECOVERY.md`
+
+Engineering branch:
+`chatgpt/m1-8-state-integrity`
+
+Runtime/persistence-only scope:
+- schema-version enforcement
+- structural WorldState validation
+- JSON SHA-256 envelope + same-revision backup recovery
+- receipt integrity validation
+- PostgreSQL latest-snapshot fail-safe
+- read-only snapshot doctor
+- explicit revision-forward PostgreSQL recovery
+- abandoned-history command/event cleanup
+
+Final M1.8 exit requires full preflight, TypeScript, unit, build, browser/API E2E, migration rerun, and PostgreSQL corruption/recovery integration PASS.
