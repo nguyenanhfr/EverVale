@@ -301,3 +301,65 @@ export function loadGameData(): LoadedGameData {
 
   return { definitions, buildCatalog, blockerCatalog, propCatalog };
 }
+
+
+export interface AuditBalanceData {
+  starterWorld: {
+    version: string;
+    starting_state: {
+      population: number;
+      happiness: number;
+      money: number;
+      power_reserve: number;
+      water_reserve: number;
+      varum: number;
+      tech_points: number;
+      tech_tier: number;
+      construction_slots: number;
+    };
+    starting_buildings: Record<string, number>;
+  };
+  simulation: {
+    version: string;
+    reference_cycle_seconds: number;
+    starting_world: {
+      population: number;
+      happiness: number;
+      money: number;
+      money_cap: number;
+      power: number;
+      water: number;
+      varum: number;
+      tech_points: number;
+      tech_tier: number;
+      construction_slots: number;
+      buildings: Record<string, number>;
+    };
+    society: {
+      workforce_fraction: number;
+      citizen_power_per_cycle: number;
+      citizen_water_per_cycle: number;
+      happiness_growth_threshold: number;
+      happiness_smoothing_per_cycle: number;
+      growth_per_occupied_house_per_cycle: number;
+      growth_world_cap_per_cycle: number;
+    };
+  };
+  tech: {
+    version: string;
+    model_revision: string;
+    tiers: Record<number, {
+      threshold: number;
+      confirmation_required: boolean;
+      unlocks: string[];
+    }>;
+  };
+}
+
+export function loadAuditBalanceData(): AuditBalanceData {
+  return {
+    starterWorld: readYaml<AuditBalanceData["starterWorld"]>("data/world/v0.1/starter_world.yaml"),
+    simulation: readYaml<AuditBalanceData["simulation"]>("data/balance/v0.1/simulation.yaml"),
+    tech: readYaml<AuditBalanceData["tech"]>("data/balance/v0.1/tech.yaml"),
+  };
+}
