@@ -917,11 +917,18 @@ If those answers are unclear, more content should not be added.
 
 The **next design task is not another building, enemy, asset, Quest or balance patch**.
 
-The next design task is:
+The next design task has now been completed:
 
 # CORE GAMEPLAY CONSTITUTION v1
 
-It must lock the strategic-path network before the project resumes gameplay feature implementation.
+Canonical authority:
+`docs/84_CORE_GAMEPLAY_CONSTITUTION_V1.md`
+
+The next execution step is now:
+
+# DEVSIM STRATEGIC PATH PACK
+
+It must simulate the four pure paths, Balanced Hybrid, Omni Build and Pivot before Economy/Progression balance v0.3 is proposed.
 
 Related authority:
 - `docs/03_GAMEPLAY_LOOP.md`
