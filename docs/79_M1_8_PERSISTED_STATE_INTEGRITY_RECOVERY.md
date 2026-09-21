@@ -1,6 +1,6 @@
 # 79 — M1.8 Persisted State Integrity & Recovery
 
-Status: **IMPLEMENTED ON ENGINEERING BRANCH / CI REQUIRED**
+Status: **PASS — PR #7 FULL CI GREEN**
 
 Date: 2026-09-21
 
@@ -260,15 +260,21 @@ Real PostgreSQL integration additionally injects a syntactically valid but malfo
 - unsupported schema version fails closed
 - snapshot retention remains bounded
 
-## Exit condition
+## Exit result
 
-M1.8 becomes PASS only when all relevant gates are green:
+PR #7 validated code-gate head:
 
-- canonical/preflight validation
-- TypeScript typecheck
-- unit tests
-- production build
-- Playwright browser/API E2E
-- PostgreSQL migration first run
-- PostgreSQL migration safe rerun
-- PostgreSQL corruption/recovery integration
+`9a4abfe87d17dd4e40633d43fd850827050fd7d0`
+
+GitHub Actions result:
+
+- canonical/preflight validation: PASS
+- TypeScript typecheck: PASS
+- unit tests: PASS
+- production build: PASS
+- Playwright browser/API E2E: PASS
+- PostgreSQL migration first run: PASS
+- PostgreSQL migration safe rerun: PASS
+- PostgreSQL corruption/recovery integration: PASS
+
+**M1.8 PERSISTED STATE INTEGRITY & RECOVERY: PASS**
