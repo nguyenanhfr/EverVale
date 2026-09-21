@@ -75,6 +75,10 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   expect(citizenRoles).toContain("school_child");
   expect(citizenRoles).toContain("workshop_worker");
   expect(citizenRoles).toContain("utility_technician");
+  const citizenVisualSources =
+    (await worldView.getAttribute("data-citizen-visual-sources"))?.split(",").filter(Boolean) ?? [];
+  expect(citizenVisualSources).toContain("generated_factory");
+  expect(citizenVisualSources).toContain("procedural");
 
   await expect.poll(async () => Number(await worldView.getAttribute("data-disconnected-routes"))).toBe(0);
   await expect(page.getByTestId("routing-status")).toContainText("12/12");
@@ -86,6 +90,7 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
     visualDialect,
     houseVariants,
     citizenRoles,
+    citizenVisualSources,
   });
 
   const cottageButton = page.getByRole("button", { name: /Hearth Cottage/i });
