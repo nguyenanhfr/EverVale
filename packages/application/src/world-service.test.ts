@@ -534,3 +534,191 @@ test("application rejects an unknown runtime command without persisting", async 
   assert.equal(repo.world.revision, 1);
   assert.equal(repo.world.resources.money, 1200);
 });
+
+
+test("read projection checkpoints periodically without writing on every poll", async () => {
+  const base = new Date("2026-09-21T12:00:00.000Z");
+  const world: WorldState = {
+    worldId:"world-periodic-checkpoint",
+    ownerId:"owner-periodic-checkpoint",
+    seed:8,
+    revision:3,
+    lifecycle:"ACTIVE",
+    speed:1,
+    simulationSeconds:0,
+    lastSimulatedAt:base.toISOString(),
+    resources:{money:1200,moneyCap:5000,power:60,powerCap:120,water:60,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:0,safety:0.5,beauty:0},
+    buildings:[building("tc","town_center")],
+    roads:[], blockers:[], props:[], combat:null, events:[],
+  };
+
+  const repo = new Repo(world);
+  const clock = new FakeClock(new Date(base.getTime() + 301_000));
+  const service = new WorldService({
+    repository:repo,
+    definitions:defs,
+    ids:new Ids(),
+    clock,
+  });
+
+  const checkpointed = await service.getOrCreate("owner-periodic-checkpoint");
+
+  assert.equal(checkpointed.revision, 4);
+  assert.equal(repo.world.revision, 4);
+  assert.ok(repo.world.simulationSeconds >= 301);
+  assert.equal(repo.saveCalls, 1);
+
+  clock.value = new Date(clock.value.getTime() + 1000);
+  const projected = await service.getOrCreate("owner-periodic-checkpoint");
+
+  assert.equal(projected.revision, 4);
+  assert.ok(projected.simulationSeconds > repo.world.simulationSeconds);
+  assert.equal(repo.saveCalls, 1);
+});
+
+test("combat resolution seen through a read is checkpointed with aftermath event exactly once", async () => {
+  const base = new Date("2026-09-21T12:00:00.000Z");
+  const combatDefs: SimulationDefinitions = {
+    ...defs,
+    defenders: {
+      town_warden: {
+        id:"town_warden",
+        side:"DEFENDER",
+        hp:100,
+        dps:100,
+        armor:0,
+        target:"ground",
+        class:"warden",
+      },
+    },
+    enemies: {
+      nibbler: {
+        id:"nibbler",
+        side:"ENEMY",
+        hp:1,
+        dps:0,
+        armor:0,
+        target:"ground",
+        class:"melee",
+      },
+    },
+  };
+  const world: WorldState = {
+    worldId:"world-combat-checkpoint",
+    ownerId:"owner-combat-checkpoint",
+    seed:9,
+    revision:11,
+    lifecycle:"ACTIVE",
+    speed:1,
+    simulationSeconds:0,
+    lastSimulatedAt:base.toISOString(),
+    resources:{money:1200,moneyCap:5000,power:60,powerCap:120,water:60,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:0,safety:0.5,beauty:0},
+    buildings:[building("tc","town_center")],
+    roads:[], blockers:[], props:[],
+    combat:{
+      id:"combat-live",
+      status:"ACTIVE",
+      warningRemainingSeconds:0,
+      elapsedSeconds:0,
+      actors:[
+        {
+          id:"warden-live",
+          definitionId:"town_warden",
+          side:"DEFENDER",
+          hp:100,
+          maxHp:100,
+          position:{x:0,y:0,z:0},
+        },
+        {
+          id:"enemy-live",
+          definitionId:"nibbler",
+          side:"ENEMY",
+          hp:1,
+          maxHp:1,
+          position:{x:0,y:0,z:1},
+        },
+      ],
+    },
+    events:[],
+  };
+
+  const repo = new Repo(world);
+  const clock = new FakeClock(new Date(base.getTime() + 1000));
+  const service = new WorldService({
+    repository:repo,
+    definitions:combatDefs,
+    ids:new Ids(),
+    clock,
+  });
+
+  const resolved = await service.getOrCreate("owner-combat-checkpoint");
+
+  assert.equal(resolved.revision, 12);
+  assert.equal(resolved.combat?.status, "RESOLVED");
+  assert.equal(resolved.combat?.outcome, "CLEAN");
+  assert.equal(resolved.events.length, 1);
+  assert.equal(resolved.events[0]?.type, "COMBAT_RESOLVED");
+  assert.equal(repo.world.revision, 12);
+  assert.equal(repo.world.events.length, 1);
+  assert.equal(repo.saveCalls, 1);
+
+  clock.value = new Date(clock.value.getTime() + 1000);
+  const reread = await service.getOrCreate("owner-combat-checkpoint");
+
+  assert.equal(reread.events.length, 1);
+  assert.equal(reread.events[0]?.id, resolved.events[0]?.id);
+  assert.equal(repo.saveCalls, 1);
+});
+
+test("read checkpoint CAS race reloads the committed winner instead of overwriting it", async () => {
+  const base = new Date("2026-09-21T12:00:00.000Z");
+  const world: WorldState = {
+    worldId:"world-read-race",
+    ownerId:"owner-read-race",
+    seed:10,
+    revision:6,
+    lifecycle:"ACTIVE",
+    speed:1,
+    simulationSeconds:0,
+    lastSimulatedAt:base.toISOString(),
+    resources:{money:1200,moneyCap:5000,power:60,powerCap:120,water:60,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:0,safety:0.5,beauty:0},
+    buildings:[building("tc","town_center")],
+    roads:[], blockers:[], props:[], combat:null, events:[],
+  };
+
+  class CheckpointRaceRepo extends Repo {
+    override async save(
+      next: WorldState,
+      previousRevision: number,
+      acceptedCommand?: AcceptedCommandContext,
+    ): Promise<void> {
+      assert.equal(acceptedCommand, undefined);
+      assert.equal(previousRevision, 6);
+      this.saveCalls += 1;
+      this.world = {
+        ...next,
+        revision:7,
+        speed:2,
+      };
+      throw new Error("REVISION_CONFLICT");
+    }
+  }
+
+  const repo = new CheckpointRaceRepo(world);
+  const clock = new FakeClock(new Date(base.getTime() + 301_000));
+  const service = new WorldService({
+    repository:repo,
+    definitions:defs,
+    ids:new Ids(),
+    clock,
+  });
+
+  const result = await service.getOrCreate("owner-read-race");
+
+  assert.equal(repo.saveCalls, 1);
+  assert.equal(result.revision, 7);
+  assert.equal(result.speed, 2);
+});
