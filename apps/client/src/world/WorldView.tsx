@@ -191,6 +191,15 @@ interface VisualRoute {
   points: Array<{x:number;z:number}>;
 }
 
+// simulationSeconds is elapsed simulation time, not an authored wall-clock epoch.
+// Start the presentation clock in a readable morning window so a fresh world is
+// not rendered as midnight with every citizen parked at home.
+const PRESENTATION_START_MINUTES = 9 * 60;
+
+function presentationMinuteOfDay(simulationSeconds: number): number {
+  return (simulationSeconds + PRESENTATION_START_MINUTES) % (24 * 60);
+}
+
 function routePoint(
   route: VisualRoute | undefined,
   t: number,
@@ -233,7 +242,7 @@ function schedulePosition(
   const presentationSlot = Number(mesh.userData.index ?? 0);
   const laneOffset = Number(mesh.userData.laneOffset ?? 0);
   const routePhaseOffset = Number(mesh.userData.routePhaseOffset ?? 0);
-  const hour = ((current.simulationSeconds % 1440) / 1440) * 24;
+  const hour = presentationMinuteOfDay(current.simulationSeconds) / 60;
 
   if (current.combat && current.combat.status !== "RESOLVED") {
     return {
@@ -1013,7 +1022,8 @@ export function WorldView({
         water.rotation.y = Math.sin(time / 1500 + i) * 0.04;
       });
 
-      const day = (current.simulationSeconds % (24 * 60)) / (24 * 60);
+      const day =
+        presentationMinuteOfDay(current.simulationSeconds) / (24 * 60);
       const nightFactor = updateEnvironmentLighting(environment, day);
       updateAmbientVisuals(ambient, time, nightFactor);
       propGlowRef.current.forEach((glow) => {
