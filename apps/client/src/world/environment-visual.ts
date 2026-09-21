@@ -7,6 +7,10 @@ export interface EnvironmentVisualRig {
   hemisphere: THREE.HemisphereLight;
   fog: THREE.Fog;
   renderer: THREE.WebGLRenderer;
+  skyMaterial: THREE.ShaderMaterial;
+  sunDisc: THREE.Sprite;
+  moonDisc: THREE.Sprite;
+  stars: THREE.Points;
 }
 
 function pseudo(seed:number): number {
@@ -126,6 +130,93 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
   scene.add(group);
 }
 
+function createSkyVisuals(scene: THREE.Scene): {
+  skyMaterial: THREE.ShaderMaterial;
+  sunDisc: THREE.Sprite;
+  moonDisc: THREE.Sprite;
+  stars: THREE.Points;
+} {
+  const skyMaterial = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      topColor: { value: new THREE.Color(0x8fb9c8) },
+      bottomColor: { value: new THREE.Color(0xc7d5b8) },
+    },
+    vertexShader: `
+      varying float vSkyY;
+      void main() {
+        vSkyY = normalize(position).y;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 topColor;
+      uniform vec3 bottomColor;
+      varying float vSkyY;
+      void main() {
+        float h = smoothstep(-0.28, 0.92, vSkyY);
+        h = pow(h, 0.72);
+        gl_FragColor = vec4(mix(bottomColor, topColor, h), 1.0);
+      }
+    `,
+  });
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(240, 24, 14), skyMaterial);
+  skyDome.frustumCulled = false;
+  scene.add(skyDome);
+
+  const sunMaterial = new THREE.SpriteMaterial({
+    color: 0xffe2a6,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const sunDisc = new THREE.Sprite(sunMaterial);
+  sunDisc.scale.set(13,13,1);
+  scene.add(sunDisc);
+
+  const moonMaterial = new THREE.SpriteMaterial({
+    color: 0xc9d8e8,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const moonDisc = new THREE.Sprite(moonMaterial);
+  moonDisc.scale.set(7.5,7.5,1);
+  scene.add(moonDisc);
+
+  const starPositions:number[]=[];
+  for(let i=0;i<110;i+=1) {
+    const u=(i*0.61803398875)%1;
+    const v=((i*37)%113)/113;
+    const theta=u*Math.PI*2;
+    const phi=0.18+v*Math.PI*0.36;
+    const r=205;
+    starPositions.push(
+      Math.cos(theta)*Math.sin(phi)*r,
+      Math.cos(phi)*r,
+      Math.sin(theta)*Math.sin(phi)*r,
+    );
+  }
+  const starGeometry=new THREE.BufferGeometry();
+  starGeometry.setAttribute("position",new THREE.Float32BufferAttribute(starPositions,3));
+  const starMaterial=new THREE.PointsMaterial({
+    color:0xf2e8d0,
+    size:0.68,
+    transparent:true,
+    opacity:0,
+    depthWrite:false,
+    depthTest:false,
+  });
+  const stars=new THREE.Points(starGeometry,starMaterial);
+  stars.frustumCulled=false;
+  scene.add(stars);
+
+  return {skyMaterial,sunDisc,moonDisc,stars};
+}
+
 export function createEnvironmentVisuals(
   scene:THREE.Scene,
   renderer:THREE.WebGLRenderer,
@@ -137,6 +228,7 @@ export function createEnvironmentVisuals(
 
   const sky=new THREE.Color(0xbfd1c1);
   scene.background=sky;
+  const skyVisuals=createSkyVisuals(scene);
   const fog=new THREE.Fog(sky,86,178);
   scene.fog=fog;
 
@@ -195,7 +287,7 @@ export function createEnvironmentVisuals(
   scene.add(skirt);
 
   addPerimeterLandscape(scene);
-  return {scene,ground,sun,hemisphere,fog,renderer};
+  return {scene,ground,sun,hemisphere,fog,renderer,...skyVisuals};
 }
 
 function smoothstep(a:number,b:number,x:number): number {
@@ -217,6 +309,16 @@ export function updateEnvironmentLighting(
   const duskSky=new THREE.Color(0xd5ad8a);
   const nightSky=new THREE.Color(0x52677a);
   const sky=nightSky.clone().lerp(duskSky,Math.max(daylight*0.45,twilight*0.65)).lerp(daySky,daylight);
+  const topNight=new THREE.Color(0x34495f);
+  const topDusk=new THREE.Color(0x9a7180);
+  const topDay=new THREE.Color(0x7fb5d0);
+  const bottomNight=new THREE.Color(0x647387);
+  const bottomDusk=new THREE.Color(0xe0aa80);
+  const bottomDay=new THREE.Color(0xd2dfbd);
+  const top=topNight.clone().lerp(topDusk,twilight*0.72).lerp(topDay,daylight);
+  const bottom=bottomNight.clone().lerp(bottomDusk,twilight*0.85).lerp(bottomDay,daylight);
+  rig.skyMaterial.uniforms.topColor.value.copy(top);
+  rig.skyMaterial.uniforms.bottomColor.value.copy(bottom);
   rig.renderer.toneMappingExposure=0.98+daylight*0.16+twilight*0.04;
   rig.fog.color.copy(sky);
   if (rig.scene.background instanceof THREE.Color) rig.scene.background.copy(sky);
@@ -228,5 +330,14 @@ export function updateEnvironmentLighting(
   rig.sun.color.copy(new THREE.Color(0xffa45f).lerp(new THREE.Color(0xfff0ce),daylight));
   rig.sun.position.set(Math.cos(angle)*52,Math.max(10,18+Math.max(0,elevation)*52),Math.sin(angle)*42);
   rig.sun.target.position.set(0,0,0);
+
+  const celestialDirection=new THREE.Vector3(Math.cos(angle),Math.sin(angle),Math.sin(angle*0.82)).normalize();
+  rig.sunDisc.position.copy(celestialDirection).multiplyScalar(128);
+  rig.moonDisc.position.copy(celestialDirection).multiplyScalar(-118);
+  (rig.sunDisc.material as THREE.SpriteMaterial).opacity=0.16+daylight*0.68+twilight*0.18;
+  (rig.moonDisc.material as THREE.SpriteMaterial).opacity=Math.max(0,nightFactor*0.72-twilight*0.22);
+  const starMaterial=rig.stars.material as THREE.PointsMaterial;
+  starMaterial.opacity=Math.max(0,Math.min(0.72,nightFactor*0.88-twilight*0.32));
+  rig.stars.rotation.y=day*Math.PI*0.35;
   return nightFactor;
 }
