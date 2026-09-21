@@ -5,11 +5,18 @@ import { routeAlongRoads, samplePolyline } from "@evervale/domain/road-routing";
 import type { WorldState } from "@evervale/domain/world.types";
 import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protocol/world";
 import { createPropObject, makeSelectionRing } from "./prop-factory";
-import { createBuildingVisual } from "./building-visual";
+import { createBuildingVisualFromRegistry } from "./buildings/building-visual-registry";
 import { createRoadVisual } from "./road-visual";
-import { animateCitizenVisual, createCitizenVisual, createDogVisual } from "./actor-visual";
+import { animateCitizenVisual } from "./actors/citizen-visual";
+import { createCitizenVisualFromRegistry } from "./actors/citizen-visual-registry";
+import { createDogVisual } from "./actors/animal-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
+import {
+  citizenRoleForWorkplace,
+  resolveBuildingVisualIdentities,
+  resolveWorldVisualDialect,
+} from "./visual-identity";
 import {
   constructionVisualState,
   createBuilderObject,
@@ -184,18 +191,45 @@ interface VisualRoute {
   points: Array<{x:number;z:number}>;
 }
 
+// simulationSeconds is elapsed simulation time, not an authored wall-clock epoch.
+// Start the presentation clock in a readable morning window so a fresh world is
+// not rendered as midnight with every citizen parked at home.
+const PRESENTATION_START_MINUTES = 9 * 60;
+
+function presentationMinuteOfDay(simulationSeconds: number): number {
+  return (simulationSeconds + PRESENTATION_START_MINUTES) % (24 * 60);
+}
+
 function routePoint(
   route: VisualRoute | undefined,
   t: number,
   fallback: {x:number;z:number},
+  laneOffset = 0,
+  phaseOffset = 0,
 ): {x:number;z:number} {
   if (!route?.connected || route.points.length === 0) return fallback;
-  return samplePolyline(route.points, t);
+
+  const sampleT = Math.max(0, Math.min(1, t + phaseOffset));
+  const point = samplePolyline(route.points, sampleT);
+  if (Math.abs(laneOffset) < 0.001 || route.points.length < 2) return point;
+
+  const epsilon = 0.012;
+  const before = samplePolyline(route.points, Math.max(0, sampleT - epsilon));
+  const after = samplePolyline(route.points, Math.min(1, sampleT + epsilon));
+  const dx = after.x - before.x;
+  const dz = after.z - before.z;
+  const length = Math.hypot(dx, dz);
+  if (length < 0.001) return point;
+
+  return {
+    x: point.x + (-dz / length) * laneOffset,
+    z: point.z + (dx / length) * laneOffset,
+  };
 }
 
 function schedulePosition(
   current: WorldState,
-  mesh: THREE.Mesh,
+  mesh: THREE.Object3D,
 ): { x: number; z: number; activity: string } {
   const home = mesh.userData.home as {x:number;z:number};
   const work = mesh.userData.work as {x:number;z:number};
@@ -205,7 +239,10 @@ function schedulePosition(
   const leisureToHome = mesh.userData.leisureToHome as VisualRoute | undefined;
   const homeToShelter = mesh.userData.homeToShelter as VisualRoute | undefined;
   const child = Boolean(mesh.userData.child);
-  const hour = ((current.simulationSeconds % 1440) / 1440) * 24;
+  const presentationSlot = Number(mesh.userData.index ?? 0);
+  const laneOffset = Number(mesh.userData.laneOffset ?? 0);
+  const routePhaseOffset = Number(mesh.userData.routePhaseOffset ?? 0);
+  const hour = presentationMinuteOfDay(current.simulationSeconds) / 60;
 
   if (current.combat && current.combat.status !== "RESOLVED") {
     return {
@@ -213,6 +250,8 @@ function schedulePosition(
         homeToShelter,
         Math.min(1, current.combat.elapsedSeconds / 5),
         home,
+        laneOffset,
+        routePhaseOffset,
       ),
       activity: homeToShelter?.connected ? "SHELTER" : "SHELTER_BLOCKED",
     };
@@ -227,10 +266,37 @@ function schedulePosition(
   ) => {
     const t = Math.max(0, Math.min(1, (hour - startHour) / Math.max(0.01, endHour - startHour)));
     return {
-      ...routePoint(route, t, fallback),
+      ...routePoint(route, t, fallback, laneOffset, routePhaseOffset),
       activity: route?.connected ? activity : `${activity}_BLOCKED`,
     };
   };
+
+  // Presentation-only living-world pass: keep a small, deterministic share of
+  // adult citizens visible on streets during daytime instead of parking every
+  // visual actor inside a workplace for the whole work block. This never
+  // changes server schedules, routing authority, economy, or citizen state.
+  const ambientErrand =
+    !child &&
+    hour >= 8.5 &&
+    hour < 19.5 &&
+    presentationSlot % 3 === 1 &&
+    workToLeisure?.connected;
+
+  if (ambientErrand) {
+    const cycle =
+      (current.simulationSeconds / 105 + presentationSlot * 0.217) % 1;
+    const thereAndBack = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2;
+    return {
+      ...routePoint(
+        workToLeisure,
+        thereAndBack,
+        work,
+        laneOffset,
+        routePhaseOffset * 0.5,
+      ),
+      activity: "ERRAND",
+    };
+  }
 
   if (child) {
     if (hour < 7.5) return { ...home, activity: "HOME" };
@@ -284,7 +350,7 @@ export function WorldView({
   const routingRef = useRef(onRouting);
   const roadStartRef = useRef(roadStart);
   const visualPopulationRef = useRef(visualPopulationOverride);
-  const citizensRef = useRef<THREE.Mesh[]>([]);
+  const citizensRef = useRef<THREE.Object3D[]>([]);
   const animalsRef = useRef<THREE.Object3D[]>([]);
   const propWaterRef = useRef<THREE.Mesh[]>([]);
   const propGlowRef = useRef<THREE.Mesh[]>([]);
@@ -318,7 +384,7 @@ export function WorldView({
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 800);
     camera.position.set(46, 50, 55);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -329,12 +395,24 @@ export function WorldView({
     controls.target.set(0, 1.15, 0);
     controls.enableDamping = true;
     controls.dampingFactor = 0.075;
-    controls.minPolarAngle = 0.62;
-    controls.maxPolarAngle = 1.08;
-    controls.minDistance = 22;
-    controls.maxDistance = 120;
+    controls.enableRotate = true;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+    controls.screenSpacePanning = true;
+    controls.zoomToCursor = true;
+    controls.rotateSpeed = 0.72;
+    controls.panSpeed = 0.95;
+    controls.zoomSpeed = 1.1;
+    controls.minPolarAngle = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 - 0.025;
+    controls.minDistance = 5;
+    controls.maxDistance = 220;
 
-    const environment = createEnvironmentVisuals(scene, renderer);
+    host.dataset.cameraMode = "free-preview";
+    host.dataset.cameraMinDistance = String(controls.minDistance);
+    host.dataset.cameraMaxDistance = String(controls.maxDistance);
+
+    const environment = createEnvironmentVisuals(scene, renderer, worldRef.current.seed);
     const ambient = createAmbientVisuals(scene);
     const ground = environment.ground;
 
@@ -579,7 +657,27 @@ export function WorldView({
       group.clear();
     };
 
+    let signatureWorld: WorldState | null = null;
+    let signatureSelectedProp: string | null = null;
+    let signaturePopulation = -1;
+    let cachedPresentationSignature = "";
+    let lastScheduleKey = "";
+
     const presentationSignature = (current: WorldState): string => {
+      const selectedProp = selectedPropIdRef.current;
+      const population = Math.min(
+        40,
+        visualPopulationRef.current ?? current.society.population,
+      );
+
+      if (
+        current === signatureWorld &&
+        selectedProp === signatureSelectedProp &&
+        population === signaturePopulation
+      ) {
+        return cachedPresentationSignature;
+      }
+
       const buildingState = current.buildings
         .map((building) => {
           const stage =
@@ -595,21 +693,30 @@ export function WorldView({
       const combatState = current.combat
         ? `${current.combat.id}:${current.combat.status}:${current.combat.outcome ?? ""}:${current.combat.actors
             .filter((actor) => actor.hp > 0)
-            .map((actor) => actor.id)
+            .map((actor) => `${actor.id}:${Math.round(actor.hp)}`)
             .join(",")}`
         : "none";
-      const population = Math.min(
-        40,
-        visualPopulationRef.current ?? current.society.population,
-      );
-      return [
-        current.revision,
-        selectedPropIdRef.current ?? "",
+      const roadState = (current.roads ?? [])
+        .map((road) => `${road.id}:${road.from.x.toFixed(2)}:${road.from.z.toFixed(2)}:${road.to.x.toFixed(2)}:${road.to.z.toFixed(2)}`)
+        .join("|");
+      const propState = (current.props ?? [])
+        .map((prop) => `${prop.id}:${prop.definitionId}:${prop.position.x.toFixed(2)}:${prop.position.z.toFixed(2)}:${prop.rotationY.toFixed(3)}`)
+        .join("|");
+
+      signatureWorld = current;
+      signatureSelectedProp = selectedProp;
+      signaturePopulation = population;
+      cachedPresentationSignature = [
+        current.seed,
+        selectedProp ?? "",
         population,
         buildingState,
         blockerState,
+        roadState,
+        propState,
         combatState,
       ].join("::");
+      return cachedPresentationSignature;
     };
 
     const rebuild = () => {
@@ -632,12 +739,29 @@ export function WorldView({
         (building) => building.constructionState === "BUILDING",
       );
 
+      const visualIdentities = resolveBuildingVisualIdentities(
+        current.seed,
+        current.buildings,
+      );
+      host.dataset.visualDialect = resolveWorldVisualDialect(current.seed).id;
+      const houseVariants = current.buildings
+        .filter(
+          (building) =>
+            building.definitionId === "house_small" &&
+            building.constructionState === "COMPLETE",
+        )
+        .map((building) => visualIdentities.get(building.id)?.variantName)
+        .filter((value): value is string => Boolean(value));
+      host.dataset.houseVariants = houseVariants.join(",");
+      host.dataset.houseVariantCount = String(new Set(houseVariants).size);
+
       current.buildings.forEach((building) => {
         const meta = buildCatalogRef.current.find((item) => item.id === building.definitionId);
+        const identity = visualIdentities.get(building.id);
         const visual =
-          building.constructionState === "BUILDING"
+          building.constructionState === "BUILDING" || !identity
             ? createConstructionObject(building, meta)
-            : createBuildingVisual(building, meta);
+            : createBuildingVisualFromRegistry(building, meta, identity);
         visual.traverse((child) => {
           const mesh = child as THREE.Mesh;
           if (mesh.userData.buildingGlow) buildingGlowRef.current.push(mesh);
@@ -708,7 +832,7 @@ export function WorldView({
       );
       const jobs = current.buildings.filter(
         (b) =>
-          ["workshop", "power_plant", "water_plant", "school", "guard_post"].includes(b.definitionId) &&
+          ["workshop", "power_plant", "water_plant", "school", "guard_post", "farm", "restaurant", "builders_yard"].includes(b.definitionId) &&
           b.constructionState === "COMPLETE",
       );
       const school = current.buildings.find(
@@ -733,14 +857,47 @@ export function WorldView({
         40,
         visualPopulationRef.current ?? current.society.population,
       );
+      const presentedRoles = new Set<string>();
+      const presentedVisualSources = new Set<string>();
+      const detailedRoles = new Set<string>();
+      let detailedCitizenCount = 0;
+      const generatedDetailSoftBudget = presentedPopulation > 24 ? 8 : 18;
+      const generatedDetailHardBudget = presentedPopulation > 24 ? 12 : 18;
+
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const citizen = createCitizenVisual(i, child, i < 18);
+        const homeBuilding = homes[i % Math.max(1, homes.length)];
+        const home = homeBuilding?.position ?? { x: 0, y: 0, z: 0 };
+        const adultJobBuilding = jobs[i % Math.max(1, jobs.length)];
+        const adultJob = adultJobBuilding?.position ?? home;
+        const work = child ? (school?.position ?? home) : adultJob;
+        const role = citizenRoleForWorkplace(
+          child,
+          child ? "school" : adultJobBuilding?.definitionId,
+        );
+        const roleNeedsDetailedRepresentative = !detailedRoles.has(role);
+        const generatedDetailAllowed =
+          i < generatedDetailSoftBudget ||
+          (roleNeedsDetailedRepresentative &&
+            detailedCitizenCount < generatedDetailHardBudget);
+        if (generatedDetailAllowed) {
+          detailedRoles.add(role);
+          detailedCitizenCount += 1;
+        }
+
+        const citizen = createCitizenVisualFromRegistry({
+          worldSeed: current.seed,
+          presentationSlot: i,
+          child,
+          role,
+          castShadow: presentedPopulation > 24 ? i < 4 : i < 6,
+          generatedDetailAllowed,
+        });
         citizen.userData.index = i;
         citizen.userData.child = child;
-        const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
-        const adultJob = jobs[i % Math.max(1, jobs.length)]?.position ?? home;
-        const work = child ? (school?.position ?? home) : adultJob;
+        citizen.userData.role = role;
+        presentedRoles.add(role);
+        presentedVisualSources.add(String(citizen.userData.visualSource ?? "unknown"));
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
@@ -768,13 +925,22 @@ export function WorldView({
           homeToShelter.connected;
 
         const angle = (i * 2.399963229728653) % (Math.PI * 2);
-        const radius = 0.35 + (i % 4) * 0.12;
+        const radius = 0.58 + (i % 5) * 0.16;
         citizen.userData.offsetX = Math.cos(angle) * radius;
         citizen.userData.offsetZ = Math.sin(angle) * radius;
+        const lanePattern = [-0.68, 0.68, -0.24, 0.24] as const;
+        citizen.userData.laneOffset = lanePattern[i % lanePattern.length];
+        citizen.userData.routePhaseOffset =
+          (((i * 37) % 11) - 5) * 0.008;
         citizen.userData.activity = "HOME";
         dynamic.add(citizen);
         citizensRef.current.push(citizen);
       }
+      host.dataset.citizenRoles = [...presentedRoles].sort().join(",");
+      host.dataset.citizenRoleCount = String(presentedRoles.size);
+      host.dataset.citizenVisualSources = [...presentedVisualSources].sort().join(",");
+      host.dataset.citizenDetailedCount = String(detailedCitizenCount);
+      lastScheduleKey = "";
 
       const disconnectedRoutes = citizensRef.current.filter(
         (citizen) => citizen.userData.routingConnected === false,
@@ -784,7 +950,7 @@ export function WorldView({
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
 
       if (homes.length > 0) {
-        const dog = createDogVisual();
+        const dog = createDogVisual(current.seed);
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
@@ -830,8 +996,24 @@ export function WorldView({
         lastPresentationKey = presentationKey;
       }
 
+      const scheduleKey = [
+        current.simulationSeconds,
+        current.combat?.id ?? "",
+        current.combat?.status ?? "",
+        current.combat?.elapsedSeconds ?? "",
+      ].join(":");
+      if (scheduleKey !== lastScheduleKey) {
+        citizensRef.current.forEach((mesh) => {
+          mesh.userData.scheduledPresentation = schedulePosition(current, mesh);
+        });
+        lastScheduleKey = scheduleKey;
+      }
+
       citizensRef.current.forEach((mesh) => {
-        const scheduled = schedulePosition(current, mesh);
+        const scheduled =
+          (mesh.userData.scheduledPresentation as
+            | { x: number; z: number; activity: string }
+            | undefined) ?? schedulePosition(current, mesh);
         const i = Number(mesh.userData.index);
         const offsetX = Number(mesh.userData.offsetX ?? 0);
         const offsetZ = Number(mesh.userData.offsetZ ?? 0);
@@ -839,12 +1021,13 @@ export function WorldView({
         const targetZ = scheduled.z + offsetZ;
         const dx = targetX - mesh.position.x;
         const dz = targetZ - mesh.position.z;
+        const moving = Math.hypot(dx, dz) > 0.02;
         mesh.position.x += dx * 0.12;
         mesh.position.z += dz * 0.12;
-        if (Math.hypot(dx, dz) > 0.02) {
+        if (moving) {
           mesh.rotation.y = Math.atan2(dx, dz);
         }
-        animateCitizenVisual(mesh, time, Math.hypot(dx, dz) > 0.02, i);
+        animateCitizenVisual(mesh, time, moving, i);
         mesh.userData.activity = scheduled.activity;
       });
 
@@ -902,7 +1085,8 @@ export function WorldView({
         water.rotation.y = Math.sin(time / 1500 + i) * 0.04;
       });
 
-      const day = (current.simulationSeconds % (24 * 60)) / (24 * 60);
+      const day =
+        presentationMinuteOfDay(current.simulationSeconds) / (24 * 60);
       const nightFactor = updateEnvironmentLighting(environment, day);
       updateAmbientVisuals(ambient, time, nightFactor);
       propGlowRef.current.forEach((glow) => {

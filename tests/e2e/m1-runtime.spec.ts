@@ -64,9 +64,33 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   expect(triangles).toBeLessThanOrEqual(1_500_000);
   expect(citizens).toBeGreaterThan(0);
   expect(citizens).toBeLessThanOrEqual(30);
+
+  const visualDialect = await worldView.getAttribute("data-visual-dialect");
+  expect(["hearthstone", "willowbrook", "amberfield", "bluebell"]).toContain(visualDialect);
+  await expect.poll(async () => Number(await worldView.getAttribute("data-house-variant-count"))).toBe(3);
+  const houseVariants = (await worldView.getAttribute("data-house-variants"))?.split(",").filter(Boolean) ?? [];
+  expect(new Set(houseVariants).size).toBe(3);
+  await expect.poll(async () => Number(await worldView.getAttribute("data-citizen-role-count"))).toBeGreaterThanOrEqual(3);
+  const citizenRoles = (await worldView.getAttribute("data-citizen-roles"))?.split(",").filter(Boolean) ?? [];
+  expect(citizenRoles).toContain("school_child");
+  expect(citizenRoles).toContain("workshop_worker");
+  expect(citizenRoles).toContain("utility_technician");
+  const citizenVisualSources =
+    (await worldView.getAttribute("data-citizen-visual-sources"))?.split(",").filter(Boolean) ?? [];
+  expect(citizenVisualSources).toEqual(["generated_factory"]);
+
   await expect.poll(async () => Number(await worldView.getAttribute("data-disconnected-routes"))).toBe(0);
   await expect(page.getByTestId("routing-status")).toContainText("12/12");
-  console.log("M1_RENDER_METRICS", { drawCalls, triangles, citizens, disconnectedRoutes: 0 });
+  console.log("M1_RENDER_METRICS", {
+    drawCalls,
+    triangles,
+    citizens,
+    disconnectedRoutes: 0,
+    visualDialect,
+    houseVariants,
+    citizenRoles,
+    citizenVisualSources,
+  });
 
   const cottageButton = page.getByRole("button", { name: /Hearth Cottage/i });
   await expect(cottageButton).toContainText("3×2 grid · 6×4m");
