@@ -194,3 +194,14 @@ Optional inspector can show:
 - Happiness icon
 
 without inventing lore for every person.
+
+
+## Runtime visual identity authority
+
+The role/archetype roster in this document is resolved into deterministic runtime appearance by:
+
+- `docs/78_VISUAL_IDENTITY_VARIATION_SYSTEM.md`
+- `data/presentation/v0.1/visual_identities.yaml`
+- `apps/client/src/world/visual-identity.ts`
+
+A visible citizen should expose role silhouette and seeded variation instead of falling back to one generic civilian mesh.
