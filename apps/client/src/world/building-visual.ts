@@ -356,12 +356,18 @@ function addHouse(
   );
 }
 
-function addTownCenter(group:THREE.Group,width:number,depth:number): void {
+function addTownCenter(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
   const h=4.0;
+  const variant=identity.variantIndex%3;
   addFoundation(group,width,depth);
-  box(group,width*0.9,h,depth*0.84,material("plasterWarm"),0,h/2+0.34,0);
-  addTimberFront(group,width*0.9,depth*0.84,h);
-  addGabledRoof(group,width*0.98,depth*0.9,h+0.34,material("roof"),1.35);
+  box(group,width*0.9,h,depth*0.84,material(identity.wallTone),0,h/2+0.34,0);
+  addTimberFront(group,width*0.9,depth*0.84,h,identity.trimTone);
+  addGabledRoof(group,width*0.98,depth*0.9,h+0.34,material(identity.roofTone),1.35);
   addDoor(group,0,depth*0.42+0.08,1.2,1.9);
   addStoneStep(group,0,depth*0.47+0.34,1.7);
   addEaveBrackets(group,width*0.9,depth*0.84,h+0.14);
@@ -369,81 +375,250 @@ function addTownCenter(group:THREE.Group,width:number,depth:number): void {
     addWindow(group,x,1.75,depth*0.42+0.09);
     addWindow(group,x,3.05,depth*0.42+0.09);
   }
-  const towerY=h+1.2;
-  box(group,1.75,2.15,1.75,material("stone"),0,towerY,0);
-  addGabledRoof(group,2.1,2.1,h+2.28,material("copper",0.52,0.18),0.85);
-  const clock=mesh(new THREE.CylinderGeometry(0.48,0.48,0.08,18),material("cream"),0,h+1.45,0.91,false);
-  clock.rotation.x=Math.PI/2;
-  group.add(clock);
-  box(group,width*0.32,0.12,0.52,material("timberDark"),-width*0.25,0.55,depth*0.5+0.35,false);
+
+  if (variant===0) {
+    const towerY=h+1.2;
+    box(group,1.75,2.15,1.75,material(identity.secondaryWallTone),0,towerY,0);
+    addGabledRoof(group,2.1,2.1,h+2.28,material(identity.accentTone),0.85);
+    const clock=mesh(new THREE.CylinderGeometry(0.48,0.48,0.08,18),material("cream"),0,h+1.45,0.91,false);
+    clock.rotation.x=Math.PI/2;
+    group.add(clock);
+  } else if (variant===1) {
+    const tx=-width*0.28;
+    box(group,1.55,2.45,1.55,material(identity.secondaryWallTone),tx,h+1.35,0);
+    addGabledRoof(group,1.9,1.9,h+2.58,material(identity.accentTone),0.78);
+    const bell=mesh(new THREE.ConeGeometry(0.25,0.38,10),material(identity.accentTone),tx,h+1.65,depth*0.44,false);
+    bell.rotation.x=Math.PI;
+    group.add(bell);
+    const porch=box(group,width*0.5,0.14,1.25,material(identity.roofTone),width*0.16,2.75,depth*0.53);
+    porch.rotation.x=-0.08;
+    for(const x of [-width*0.06,width*0.18,width*0.4]) {
+      box(group,0.1,2.2,0.1,material(identity.trimTone),x,1.1,depth*0.61,false);
+    }
+  } else {
+    for(const x of [-width*0.25,width*0.25]) {
+      box(group,width*0.27,1.0,depth*0.34,material(identity.secondaryWallTone),x,h+0.4,depth*0.12);
+      addGabledRoof(group,width*0.32,depth*0.38,h+0.9,material(identity.roofTone),0.48);
+    }
+    const lantern=mesh(new THREE.CylinderGeometry(0.22,0.3,0.5,8),windowMaterial(),0,h+0.78,depth*0.45,false);
+    lantern.userData.buildingGlow=true;
+    group.add(lantern);
+  }
+
+  box(group,width*0.32,0.12,0.52,material(identity.trimTone),-width*0.25,0.55,depth*0.5+0.35,false);
 }
 
-function addWorkshop(group:THREE.Group,width:number,depth:number): void {
+function addWorkshop(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
   const h=3.25;
+  const variant=identity.variantIndex%4;
   addFoundation(group,width,depth);
-  box(group,width*0.9,h,depth*0.86,material("brick"),0,h/2+0.34,0);
-  box(group,width*0.72,0.2,depth*0.98,material("roof"),0,h+0.52,0);
+  box(group,width*0.9,h,depth*0.86,material(variant===1 ? "brickDark" : "brick"),0,h/2+0.34,0);
+  box(group,width*0.72,0.2,depth*0.98,material(identity.roofTone),0,h+0.52,0);
   addDoor(group,width*0.2,depth*0.43+0.08,1.35,1.85);
   addWindow(group,-width*0.25,1.72,depth*0.43+0.09);
-  const awning=box(group,width*0.42,0.13,0.95,material("copper",0.65,0.18),width*0.2,h*0.62,depth*0.49+0.4);
-  awning.rotation.x=-0.12;
-  const wheel=mesh(new THREE.TorusGeometry(0.62,0.12,8,18),material("metal",0.55,0.35),-width*0.32,1.25,depth*0.46+0.13,false);
-  group.add(wheel);
-  for(let i=0;i<3;i+=1) box(group,0.5,0.38,0.5,material("timber"),-width*0.34+i*0.52,0.19,-depth*0.58,false);
-}
 
-function addPowerPlant(group:THREE.Group,width:number,depth:number): void {
-  const h=3.8;
-  addFoundation(group,width,depth);
-  box(group,width*0.9,h,depth*0.82,material("brick"),0,h/2+0.34,0);
-  box(group,width*0.94,0.28,depth*0.9,material("metal",0.72,0.25),0,h+0.45,0);
-  for (const x of [-width*0.24,width*0.24]) {
-    addWindow(group,x,1.75,depth*0.41+0.08);
-    const stack=mesh(new THREE.CylinderGeometry(0.34,0.42,2.45,10),material("metal",0.68,0.28),x,h+1.2,-depth*0.18);
+  if(variant===0) {
+    const awning=box(group,width*0.42,0.13,0.95,material(identity.accentTone),width*0.2,h*0.62,depth*0.49+0.4);
+    awning.rotation.x=-0.12;
+    const wheel=mesh(new THREE.TorusGeometry(0.62,0.12,8,18),material("metal",0.55,0.35),-width*0.32,1.25,depth*0.46+0.13,false);
+    group.add(wheel);
+  } else if(variant===1) {
+    const stack=mesh(new THREE.CylinderGeometry(0.3,0.38,2.5,9),material("metal",0.68,0.25),-width*0.28,h+1.0,-depth*0.18);
     group.add(stack);
-    box(group,0.7,0.12,0.7,material("copper",0.5,0.3),x,h+2.45,-depth*0.18,false);
+    box(group,width*0.34,1.45,depth*0.4,material(identity.secondaryWallTone),width*0.36,0.9,-depth*0.1);
+    const forge=box(group,0.72,0.52,0.62,material("stoneDark"),width*0.23,0.4,depth*0.42,false);
+    forge.rotation.y=0.08;
+  } else if(variant===2) {
+    box(group,width*0.38,2.0,depth*0.62,material(identity.secondaryWallTone),-width*0.38,1.0,-depth*0.02);
+    const shedRoof=box(group,width*0.46,0.14,depth*0.72,material(identity.roofTone),-width*0.38,2.1,-depth*0.02);
+    shedRoof.rotation.z=0.08;
+    for(const x of [-width*0.38,-width*0.18,width*0.02]) {
+      box(group,0.48,0.34,0.46,material("timber"),x,0.18,depth*0.57,false);
+    }
+  } else {
+    const canopy=box(group,width*0.72,0.12,1.05,material(identity.roofTone),0,2.35,depth*0.55);
+    canopy.rotation.x=-0.1;
+    for(const x of [-width*0.3,0,width*0.3]) {
+      box(group,0.08,2.1,0.08,material("metal"),x,1.05,depth*0.64,false);
+    }
+    for(let i=0;i<5;i+=1) {
+      box(group,0.7,0.1,0.2,material("timber"),-width*0.32+i*0.35,0.12+i*0.04,-depth*0.56,false);
+    }
   }
-  const flywheel=mesh(new THREE.TorusGeometry(0.75,0.14,8,20),material("copper",0.55,0.28),0,1.45,depth*0.43+0.13,false);
+}
+
+function addPowerPlant(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
+  const h=3.8;
+  const variant=identity.variantIndex%3;
+  addFoundation(group,width,depth);
+  box(group,width*0.9,h,depth*0.82,material(variant===2 ? "brickDark" : "brick"),0,h/2+0.34,0);
+  box(group,width*0.94,0.28,depth*0.9,material("metal",0.72,0.25),0,h+0.45,0);
+  addWindow(group,-width*0.24,1.75,depth*0.41+0.08);
+  addWindow(group,width*0.24,1.75,depth*0.41+0.08);
+
+  const stackXs = variant===1 ? [width*0.28] : [-width*0.24,width*0.24];
+  for (const x of stackXs) {
+    const stack=mesh(
+      new THREE.CylinderGeometry(variant===1?0.42:0.34,variant===1?0.5:0.42,variant===1?3.0:2.45,10),
+      material("metal",0.68,0.28),
+      x,
+      h+(variant===1?1.45:1.2),
+      -depth*0.18,
+    );
+    group.add(stack);
+    box(group,0.7,0.12,0.7,material(identity.accentTone,0.5,0.3),x,h+(variant===1?2.98:2.45),-depth*0.18,false);
+  }
+
+  const flywheel=mesh(
+    new THREE.TorusGeometry(variant===1?0.92:0.75,0.14,8,20),
+    material(identity.accentTone,0.55,0.28),
+    variant===2 ? -width*0.18 : 0,
+    1.45,
+    depth*0.43+0.13,
+    false,
+  );
   group.add(flywheel);
-}
 
-function addWaterPlant(group:THREE.Group,width:number,depth:number): void {
-  const h=3.15;
-  addFoundation(group,width,depth);
-  box(group,width*0.82,h,depth*0.76,material("plaster"),0,h/2+0.34,0);
-  addGabledRoof(group,width*0.9,depth*0.82,h+0.34,material("roof"),0.8);
-  addDoor(group,0,depth*0.38+0.08);
-  for(const x of [-width*0.3,width*0.3]) {
-    const tank=mesh(new THREE.CylinderGeometry(0.72,0.82,1.5,14),material("water",0.42,0.08),x,0.92,-depth*0.48,false);
-    group.add(tank);
-    const rim=mesh(new THREE.TorusGeometry(0.76,0.06,6,16),material("metal",0.62,0.22),x,1.56,-depth*0.48,false);
-    rim.rotation.x=Math.PI/2;
-    group.add(rim);
+  if(variant===2) {
+    box(group,width*0.36,2.0,depth*0.48,material(identity.secondaryWallTone),width*0.4,1.0,-depth*0.1);
+    box(group,width*0.42,0.14,depth*0.54,material(identity.roofTone),width*0.4,2.08,-depth*0.1);
+    for(let i=0;i<3;i+=1) {
+      box(group,0.22,0.75,0.28,material("metal"),width*0.31+i*0.23,0.38,depth*0.48,false);
+    }
   }
 }
 
-function addSchool(group:THREE.Group,width:number,depth:number): void {
-  const h=3.2;
+function addWaterPlant(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
+  const h=3.15;
+  const variant=identity.variantIndex%3;
   addFoundation(group,width,depth);
-  box(group,width*0.9,h,depth*0.82,material("plasterWarm"),0,h/2+0.34,0);
-  addGabledRoof(group,width*0.96,depth*0.88,h+0.34,material("roofWarm"),1.0);
+  box(group,width*0.82,h,depth*0.76,material(identity.wallTone),0,h/2+0.34,0);
+  addGabledRoof(group,width*0.9,depth*0.82,h+0.34,material(identity.roofTone),variant===2?1.0:0.8);
+  addDoor(group,0,depth*0.38+0.08);
+
+  if(variant===0) {
+    for(const x of [-width*0.3,width*0.3]) {
+      const tank=mesh(new THREE.CylinderGeometry(0.72,0.82,1.5,14),material("water",0.42,0.08),x,0.92,-depth*0.48,false);
+      group.add(tank);
+      const rim=mesh(new THREE.TorusGeometry(0.76,0.06,6,16),material("metal",0.62,0.22),x,1.56,-depth*0.48,false);
+      rim.rotation.x=Math.PI/2;
+      group.add(rim);
+    }
+  } else if(variant===1) {
+    for(const x of [-width*0.28,0,width*0.28]) {
+      const pipe=mesh(new THREE.CylinderGeometry(0.12,0.12,1.7,8),material("metal"),x,0.76,depth*0.47,false);
+      pipe.rotation.x=Math.PI/2;
+      group.add(pipe);
+      const gauge=mesh(new THREE.CylinderGeometry(0.18,0.18,0.05,12),material(identity.accentTone),x,1.48,depth*0.48,false);
+      gauge.rotation.x=Math.PI/2;
+      group.add(gauge);
+    }
+    const pump=mesh(new THREE.CylinderGeometry(0.5,0.62,1.1,10),material("water",0.5,0.05),width*0.32,0.62,-depth*0.46,false);
+    group.add(pump);
+  } else {
+    for(const x of [-width*0.28,0,width*0.28]) {
+      const basin=mesh(new THREE.CylinderGeometry(0.58,0.62,0.28,14),material("stone"),x,0.16,-depth*0.5,false);
+      const surface=mesh(new THREE.CylinderGeometry(0.5,0.5,0.04,14),material("water",0.25),x,0.32,-depth*0.5,false);
+      surface.userData.propWater=true;
+      group.add(basin,surface);
+    }
+    box(group,width*0.44,1.4,depth*0.34,material(identity.secondaryWallTone),-width*0.32,0.72,0);
+  }
+}
+
+function addSchool(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
+  const h=3.2;
+  const variant=identity.variantIndex%3;
+  addFoundation(group,width,depth);
+  box(group,width*0.9,h,depth*0.82,material(identity.wallTone),0,h/2+0.34,0);
+  addGabledRoof(group,width*0.96,depth*0.88,h+0.34,material(identity.roofTone),variant===2?1.18:1.0);
   addDoor(group,0,depth*0.41+0.08,1.05,1.75);
   addStoneStep(group,0,depth*0.46+0.3,1.45);
   addEaveBrackets(group,width*0.9,depth*0.82,h+0.13);
   for(const x of [-width*0.3,-width*0.1,width*0.1,width*0.3]) addWindow(group,x,1.65,depth*0.41+0.09);
-  box(group,0.72,1.0,0.72,material("stone"),0,h+0.72,0);
-  const bell=mesh(new THREE.ConeGeometry(0.24,0.35,10),material("copper",0.45,0.3),0,h+0.9,depth*0.38,false);
-  bell.rotation.x=Math.PI;
-  group.add(bell);
+
+  if(variant===0) {
+    box(group,0.72,1.0,0.72,material("stone"),0,h+0.72,0);
+    const bell=mesh(new THREE.ConeGeometry(0.24,0.35,10),material(identity.accentTone,0.45,0.3),0,h+0.9,depth*0.38,false);
+    bell.rotation.x=Math.PI;
+    group.add(bell);
+  } else if(variant===1) {
+    for(const x of [-width*0.46,width*0.46]) {
+      box(group,width*0.22,1.8,depth*0.48,material(identity.secondaryWallTone),x,0.92,-depth*0.05);
+      box(group,width*0.26,0.12,depth*0.55,material(identity.roofTone),x,1.88,-depth*0.05);
+    }
+    box(group,width*0.5,0.06,depth*0.3,material("stone"),0,0.12,depth*0.58,false);
+  } else {
+    box(group,width*0.34,2.4,depth*0.6,material(identity.secondaryWallTone),width*0.37,1.2,-depth*0.02);
+    addGabledRoof(group,width*0.4,depth*0.66,2.48,material(identity.roofTone),0.64);
+    for(const y of [1.0,1.75]) addWindow(group,width*0.37,y,depth*0.32,true);
+  }
 }
 
-function addPark(group:THREE.Group,width:number,depth:number): void {
+function addPark(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
+  const variant=identity.variantIndex%4;
   box(group,width*0.96,0.12,depth*0.96,material("grass"),0,0.06,0,false);
-  box(group,width*0.16,0.05,depth*0.9,material("stone"),0,0.15,0,false);
-  const basin=mesh(new THREE.CylinderGeometry(0.85,0.95,0.22,14),material("stone"),0,0.2,0,false);
-  const water=mesh(new THREE.CylinderGeometry(0.72,0.72,0.04,16),material("water",0.3),0,0.34,0,false);
-  water.userData.propWater=true;
-  group.add(basin,water);
+  box(group,width*(variant===2?0.32:0.16),0.05,depth*0.9,material("stone"),0,0.15,0,false);
+
+  if(variant===0) {
+    const basin=mesh(new THREE.CylinderGeometry(0.85,0.95,0.22,14),material("stone"),0,0.2,0,false);
+    const water=mesh(new THREE.CylinderGeometry(0.72,0.72,0.04,16),material("water",0.3),0,0.34,0,false);
+    water.userData.propWater=true;
+    group.add(basin,water);
+  } else if(variant===1) {
+    const pond=mesh(new THREE.CylinderGeometry(1.35,1.45,0.16,18),material("water",0.28),0,0.16,0,false);
+    pond.scale.z=0.72;
+    pond.userData.propWater=true;
+    group.add(pond);
+    for(const x of [-0.8,0.8]) {
+      const reed=mesh(new THREE.ConeGeometry(0.08,0.72,5),material("grass"),x,0.42,0.5,false);
+      group.add(reed);
+    }
+  } else if(variant===2) {
+    for(const x of [-0.8,0.8]) {
+      box(group,0.09,1.75,0.09,material(identity.trimTone),x,0.88,0,false);
+    }
+    box(group,1.72,0.08,0.08,material(identity.trimTone),0,1.65,0,false);
+    for(const x of [-0.5,0.5]) {
+      const seat=box(group,0.6,0.08,0.28,material("timber"),x,0.66,0,false);
+      seat.rotation.z=x<0?-0.08:0.08;
+      box(group,0.04,0.8,0.04,material("metal"),x,1.1,0,false);
+    }
+  } else {
+    const roof=mesh(new THREE.ConeGeometry(1.0,0.55,8),material(identity.roofTone),0,2.15,0,false);
+    group.add(roof);
+    for(let i=0;i<6;i+=1) {
+      const a=i*Math.PI*2/6;
+      box(group,0.07,1.8,0.07,material(identity.trimTone),Math.cos(a)*0.75,0.9,Math.sin(a)*0.75,false);
+    }
+    box(group,1.6,0.09,0.42,material("timber"),0,0.48,1.05,false);
+  }
+
   for(const [x,z,s] of [
     [-width*0.3,-depth*0.28,0.9],
     [width*0.3,-depth*0.24,0.82],
@@ -456,68 +631,175 @@ function addPark(group:THREE.Group,width:number,depth:number): void {
   }
 }
 
-function addGuardPost(group:THREE.Group,width:number,depth:number): void {
+function addGuardPost(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
   const h=2.85;
+  const variant=identity.variantIndex%3;
   addFoundation(group,width,depth);
   box(group,width*0.86,1.0,depth*0.82,material("stoneDark"),0,0.84,0);
-  box(group,width*0.78,h-0.7,depth*0.74,material("timber"),0,1.85,0);
-  addGabledRoof(group,width*0.94,depth*0.86,h+0.34,material("roof"),0.95);
+  box(group,width*0.78,h-0.7,depth*0.74,material(identity.wallTone),0,1.85,0);
+  addGabledRoof(group,width*0.94,depth*0.86,h+0.34,material(identity.roofTone),0.95);
   addDoor(group,0,depth*0.37+0.08);
   addWindow(group,-width*0.24,1.78,depth*0.37+0.09);
   addWindow(group,width*0.24,1.78,depth*0.37+0.09);
+
+  if(variant===1) {
+    box(group,1.1,2.3,1.1,material("stone"),width*0.34,1.35,-depth*0.2);
+    const platform=box(group,1.45,0.12,1.45,material(identity.trimTone),width*0.34,2.5,-depth*0.2,false);
+    platform.rotation.y=0.03;
+    for(const x of [width*0.18,width*0.5]) for(const z of [-depth*0.34,-depth*0.06]) {
+      box(group,0.05,0.65,0.05,material("metal"),x,2.8,z,false);
+    }
+  } else if(variant===2) {
+    for(const x of [-width*0.42,width*0.42]) {
+      box(group,0.36,2.15,0.36,material("stone"),x,1.08,depth*0.5);
+    }
+    box(group,width*0.84,0.16,0.16,material(identity.trimTone),0,2.15,depth*0.5,false);
+    box(group,width*0.72,0.09,0.09,material("metal"),0,1.0,depth*0.62,false);
+  }
+
   const pole=mesh(new THREE.CylinderGeometry(0.035,0.04,2.3,6),material("metal"),width*0.46,1.35,0,false);
-  const flag=box(group,0.7,0.42,0.04,material("awning"),width*0.46+0.36,2.1,0,false);
+  const flag=box(group,0.7,0.42,0.04,material(identity.accentTone),width*0.46+0.36,2.1,0,false);
   group.add(pole,flag);
 }
 
-function addFarm(group:THREE.Group,width:number,depth:number): void {
+function addFarm(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
   const h=3.15;
+  const variant=identity.variantIndex%4;
   addFoundation(group,width,depth);
-  box(group,width*0.72,h,depth*0.76,material("timber"),-width*0.1,h/2+0.34,0);
-  addGabledRoof(group,width*0.82,depth*0.84,h+0.34,material("roofWarm"),1.25);
+  box(group,width*0.72,h,depth*0.76,material(variant===2?identity.wallTone:"timber"),-width*0.1,h/2+0.34,0);
+  addGabledRoof(group,width*0.82,depth*0.84,h+0.34,material(identity.roofTone),variant===0?1.25:1.05);
   addDoor(group,-width*0.1,depth*0.38+0.08,1.35,1.9);
-  for(const x of [-width*0.42,width*0.42]) {
-    const silo=mesh(new THREE.CylinderGeometry(0.55,0.62,2.2,12),material("metal",0.82,0.2),x,1.15,-depth*0.18);
-    group.add(silo);
-  }
-  for(let i=0;i<4;i+=1) {
-    box(group,0.1,0.72,0.1,material("timber"),-width*0.4+i*(width*0.8/3),0.36,-depth*0.52,false);
+
+  if(variant===1) {
+    for(const x of [-width*0.42,width*0.42]) {
+      const silo=mesh(new THREE.CylinderGeometry(0.55,0.62,2.5,12),material("metal",0.82,0.2),x,1.3,-depth*0.18);
+      group.add(silo);
+    }
+  } else if(variant===2) {
+    for(let i=0;i<4;i+=1) {
+      const x=-width*0.42+i*(width*0.28);
+      const trunk=mesh(new THREE.CylinderGeometry(0.08,0.11,0.9,6),material("timber"),x,0.45,-depth*0.58,false);
+      const crown=mesh(new THREE.DodecahedronGeometry(0.38,0),material("grass"),x,1.12,-depth*0.58,false);
+      group.add(trunk,crown);
+    }
+    box(group,width*0.26,1.3,depth*0.3,material(identity.secondaryWallTone),width*0.38,0.66,depth*0.06);
+  } else if(variant===3) {
+    for(const x of [-width*0.42,width*0.42]) {
+      box(group,0.08,0.85,0.08,material("timber"),x,0.43,depth*0.54,false);
+    }
+    for(let i=0;i<5;i+=1) {
+      box(group,width*0.18,0.06,0.06,material("timber"),-width*0.36+i*width*0.18,0.55,depth*0.54,false);
+    }
+    const trough=box(group,1.3,0.28,0.5,material("water",0.42),width*0.2,0.18,-depth*0.55,false);
+    trough.rotation.y=0.08;
+  } else {
+    for(let i=0;i<4;i+=1) {
+      box(group,0.1,0.72,0.1,material("timber"),-width*0.4+i*(width*0.8/3),0.36,-depth*0.52,false);
+    }
+    for(let i=0;i<3;i+=1) {
+      box(group,0.46,0.28,0.46,material("timber"),width*0.25+i*0.38,0.14,-depth*0.54,false);
+    }
   }
 }
 
-function addRestaurant(group:THREE.Group,width:number,depth:number): void {
+function addRestaurant(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
   const h=2.95;
+  const variant=identity.variantIndex%4;
   addFoundation(group,width,depth);
-  box(group,width*0.9,h,depth*0.82,material("cream"),0,h/2+0.34,0);
-  addGabledRoof(group,width*0.96,depth*0.88,h+0.34,material("roofWarm"),0.9);
+  box(group,width*0.9,h,depth*0.82,material(identity.wallTone),0,h/2+0.34,0);
+  addGabledRoof(group,width*0.96,depth*0.88,h+0.34,material(identity.roofTone),variant===3?1.1:0.9);
   addDoor(group,width*0.22,depth*0.41+0.08);
   addStoneStep(group,width*0.22,depth*0.46+0.3,1.2);
   addWindow(group,-width*0.26,1.62,depth*0.41+0.09);
-  addFlowerBox(group,-width*0.26,1.13,depth*0.43+0.14);
   addEaveBrackets(group,width*0.9,depth*0.82,h+0.12);
-  const awning=box(group,width*0.48,0.12,0.9,material("awning"),-width*0.18,2.18,depth*0.5);
-  awning.rotation.x=-0.1;
-  box(group,1.5,0.3,0.08,material("timberDark"),0,h+0.15,depth*0.43+0.08,false);
-  for(const x of [-width*0.26,0,width*0.26]) {
-    const top=mesh(new THREE.CylinderGeometry(0.34,0.34,0.08,10),material("timber"),x,0.72,depth*0.62,false);
-    top.rotation.z=Math.PI/2;
-    group.add(top);
+
+  if(variant===0) {
+    addFlowerBox(group,-width*0.26,1.13,depth*0.43+0.14);
+    const awning=box(group,width*0.48,0.12,0.9,material("awning"),-width*0.18,2.18,depth*0.5);
+    awning.rotation.x=-0.1;
+  } else if(variant===1) {
+    const roof=box(group,width*0.58,0.1,1.35,material(identity.roofTone),-width*0.1,2.1,depth*0.62);
+    roof.rotation.x=-0.08;
+    for(const x of [-width*0.32,0,width*0.32]) box(group,0.07,1.85,0.07,material(identity.trimTone),x,0.93,depth*0.66,false);
+  } else if(variant===2) {
+    box(group,1.2,1.35,0.08,windowMaterial(),-width*0.28,1.5,depth*0.42+0.12,false).userData.buildingGlow=true;
+    box(group,0.65,1.15,0.08,windowMaterial(),width*0.02,1.42,depth*0.42+0.12,false).userData.buildingGlow=true;
+    box(group,0.42,0.72,0.08,material(identity.accentTone),-width*0.48,2.55,depth*0.44,false);
+  } else {
+    const porch=box(group,width*0.72,0.12,1.15,material(identity.roofTone),0,2.36,depth*0.56);
+    porch.rotation.x=-0.08;
+    for(const x of [-width*0.32,0,width*0.32]) {
+      box(group,0.07,2.05,0.07,material(identity.trimTone),x,1.02,depth*0.65,false);
+      const lamp=mesh(new THREE.SphereGeometry(0.11,8,6),windowMaterial(),x,1.82,depth*0.67,false);
+      lamp.userData.buildingGlow=true;
+      group.add(lamp);
+    }
   }
+
+  box(group,1.5,0.3,0.08,material(identity.trimTone),0,h+0.15,depth*0.43+0.08,false);
 }
 
-function addBuildersYard(group:THREE.Group,width:number,depth:number): void {
+function addBuildersYard(
+  group:THREE.Group,
+  width:number,
+  depth:number,
+  identity: BuildingVisualIdentity,
+): void {
+  const variant=identity.variantIndex%4;
   box(group,width*0.96,0.08,depth*0.96,material("soil"),0,0.04,0,false);
   const shedH=2.45;
-  box(group,width*0.52,shedH,depth*0.62,material("timber"),-width*0.16,shedH/2,0);
-  const roof=box(group,width*0.6,0.16,depth*0.72,material("roof"),-width*0.16,shedH+0.12,0);
+  box(group,width*(variant===1?0.62:0.52),shedH,depth*0.62,material("timber"),-width*0.16,shedH/2,0);
+  const roof=box(group,width*(variant===1?0.7:0.6),0.16,depth*0.72,material(identity.roofTone),-width*0.16,shedH+0.12,0);
   roof.rotation.z=-0.06;
+
+  if(variant===0) {
+    for(const x of [-width*0.46,width*0.46]) box(group,0.08,2.6,0.08,material("metal"),x,1.3,depth*0.42,false);
+    box(group,width*0.94,0.08,0.08,material("metal"),0,2.35,depth*0.42,false);
+    const hook=mesh(new THREE.TorusGeometry(0.13,0.025,5,9),material(identity.accentTone),width*0.18,2.05,depth*0.42,false);
+    hook.rotation.x=Math.PI/2;
+    group.add(hook);
+  } else if(variant===1) {
+    for(let i=0;i<6;i+=1) {
+      box(group,0.8,0.09,0.18,material("timber"),-width*0.38+i*0.28,0.12+i*0.05,-depth*0.5,false);
+    }
+    const saw=mesh(new THREE.CylinderGeometry(0.32,0.32,0.05,16),material("metal"),width*0.28,0.72,depth*0.46,false);
+    saw.rotation.x=Math.PI/2;
+    group.add(saw);
+  } else if(variant===2) {
+    for(let i=0;i<7;i+=1) {
+      const x=-width*0.4+(i%4)*0.42;
+      const y=0.15+Math.floor(i/4)*0.32;
+      box(group,0.38,0.28,0.38,material(i%2?"stone":"stoneWarm"),x,y,-depth*0.5,false);
+    }
+  } else {
+    for(const x of [-width*0.46,0,width*0.46]) {
+      box(group,0.05,2.8,0.05,material("metal"),x,1.4,depth*0.42,false);
+      box(group,0.05,2.8,0.05,material("metal"),x,1.4,-depth*0.42,false);
+    }
+    for(const y of [0.8,1.6,2.4]) {
+      box(group,width*0.92,0.05,0.05,material("metal"),0,y,depth*0.42,false);
+      box(group,width*0.92,0.05,0.05,material("metal"),0,y,-depth*0.42,false);
+    }
+  }
+
   for(let i=0;i<4;i+=1) {
     box(group,0.62,0.42,0.62,i%2 ? material("stone") : material("timber"),width*0.32+(i%2)*0.64,0.21+Math.floor(i/2)*0.43,-depth*0.24,false);
   }
-  for(const x of [-width*0.46,width*0.46]) {
-    box(group,0.08,2.6,0.08,material("metal"),x,1.3,depth*0.42,false);
-  }
-  box(group,width*0.94,0.08,0.08,material("metal"),0,2.35,depth*0.42,false);
 }
 
 function addIdentityDressing(
@@ -709,17 +991,17 @@ export function createBuildingVisual(
   const depth=meta ? meta.footprintCellsZ*meta.gridCellMeters : building.definitionId==="town_center" ? 8 : 4;
 
   switch(building.definitionId) {
-    case "town_center": addTownCenter(group,width,depth); break;
+    case "town_center": addTownCenter(group,width,depth,identity); break;
     case "house_small": addHouse(group,width,depth,identity); break;
-    case "workshop": addWorkshop(group,width,depth); break;
-    case "power_plant": addPowerPlant(group,width,depth); break;
-    case "water_plant": addWaterPlant(group,width,depth); break;
-    case "school": addSchool(group,width,depth); break;
-    case "park": addPark(group,width,depth); break;
-    case "guard_post": addGuardPost(group,width,depth); break;
-    case "farm": addFarm(group,width,depth); break;
-    case "restaurant": addRestaurant(group,width,depth); break;
-    case "builders_yard": addBuildersYard(group,width,depth); break;
+    case "workshop": addWorkshop(group,width,depth,identity); break;
+    case "power_plant": addPowerPlant(group,width,depth,identity); break;
+    case "water_plant": addWaterPlant(group,width,depth,identity); break;
+    case "school": addSchool(group,width,depth,identity); break;
+    case "park": addPark(group,width,depth,identity); break;
+    case "guard_post": addGuardPost(group,width,depth,identity); break;
+    case "farm": addFarm(group,width,depth,identity); break;
+    case "restaurant": addRestaurant(group,width,depth,identity); break;
+    case "builders_yard": addBuildersYard(group,width,depth,identity); break;
     default:
       addFoundation(group,width,depth);
       box(group,width*0.88,2.8,depth*0.84,material("plasterWarm"),0,1.74,0);
