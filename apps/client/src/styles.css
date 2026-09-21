@@ -938,3 +938,47 @@ button:disabled { opacity: .4; cursor: default; }
   opacity: .52;
   font-size: 10px;
 }
+
+
+.workforce-allocation {
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(222,188,112,.14);
+}
+.workforce-allocation > strong {
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #d8bc79;
+}
+.workforce-row {
+  display: grid;
+  grid-template-columns: 78px 1fr 32px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+.workforce-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: capitalize;
+  opacity: .68;
+}
+.workforce-row > b {
+  text-align: right;
+  font-size: 10px;
+}
+.workforce-meter {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+}
+.workforce-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #728b68, #c9a95d);
+}
