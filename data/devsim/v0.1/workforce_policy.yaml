@@ -1,0 +1,104 @@
+version: "0.1"
+status: "DEVSIM_CANDIDATE_ONLY"
+model_revision: "workforce-strategic-priority-v1"
+
+rules:
+  early_high_slots: 1
+  later_high_slots: 2
+  critical_reserved_for_emergency: true
+  building_local_priority_scale: 0.05
+
+semantic_levels:
+  critical: 110
+  high: 90
+  normal: 70
+  low: 45
+  paused: -1000
+
+categories:
+  utilities:
+    job_categories: [utility_power, utility_water]
+    default_level: normal
+  industry:
+    job_categories: [income, advanced_industry]
+    default_level: normal
+  education:
+    job_categories: [education]
+    default_level: normal
+  civic:
+    job_categories: [civic, service]
+    default_level: normal
+  defense:
+    job_categories: [defense_ready]
+    default_level: normal
+  advanced:
+    job_categories: [varum]
+    default_level: low
+
+profiles:
+  balanced_default:
+    utilities: normal
+    industry: normal
+    education: normal
+    civic: normal
+    defense: normal
+    advanced: low
+
+  industry_high:
+    utilities: normal
+    industry: high
+    education: low
+    civic: normal
+    defense: low
+    advanced: low
+
+  education_high:
+    utilities: normal
+    industry: normal
+    education: high
+    civic: normal
+    defense: low
+    advanced: low
+
+  defense_high:
+    utilities: normal
+    industry: low
+    education: normal
+    civic: normal
+    defense: high
+    advanced: low
+
+  industry_paused:
+    utilities: normal
+    industry: paused
+    education: high
+    civic: normal
+    defense: normal
+    advanced: low
+
+  omni_high_invalid:
+    utilities: high
+    industry: high
+    education: high
+    civic: high
+    defense: high
+    advanced: high
+
+emergency:
+  utilities:
+    reserve_ratio_trigger: 0.20
+    override_level: critical
+  defense:
+    active_combat_override_level: critical
+
+devsim:
+  balanced_build_plan:
+    - house_small
+    - workshop
+    - school
+    - guard_post
+    - park
+    - house_small
+    - restaurant
+  test_hours: 8
+  rapid_switch_interval_seconds: 600
