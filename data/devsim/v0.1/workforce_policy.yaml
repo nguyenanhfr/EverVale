@@ -7,6 +7,7 @@ rules:
   later_high_slots: 2
   critical_reserved_for_emergency: true
   building_local_priority_scale: 0.05
+  category_tie_order: [utilities, education, defense, industry, civic, advanced]
 
 semantic_levels:
   critical: 110
