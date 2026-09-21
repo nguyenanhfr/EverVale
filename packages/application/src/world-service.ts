@@ -1,4 +1,8 @@
-import { advanceWorld } from "@evervale/domain/advance-world";
+import {
+  advanceWorld,
+  advanceWorldWithAllocator,
+  type WorkforceAllocator,
+} from "@evervale/domain/advance-world";
 import { queueBlockerClear } from "@evervale/domain/blockers";
 import { applyCombatAftermath } from "@evervale/domain/combat-aftermath";
 import { triggerM1Wave } from "@evervale/domain/combat";
@@ -74,6 +78,7 @@ export interface WorldServiceOptions {
   definitions: SimulationDefinitions;
   ids: IdGenerator;
   clock: Clock;
+  workforceAllocator?: WorkforceAllocator;
 }
 
 export class WorldService {
@@ -323,7 +328,14 @@ export class WorldService {
 
     const capped = Math.min(elapsed, 7 * 24 * 60 * 60);
     const previousCombatStatus = world.combat?.status;
-    let advanced = advanceWorld(world, this.options.definitions, capped);
+    let advanced = this.options.workforceAllocator
+      ? advanceWorldWithAllocator(
+          world,
+          this.options.definitions,
+          capped,
+          this.options.workforceAllocator,
+        )
+      : advanceWorld(world, this.options.definitions, capped);
 
     const newlyResolved =
       previousCombatStatus !== "RESOLVED" &&
