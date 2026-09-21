@@ -759,6 +759,7 @@ export function WorldView({
         visualPopulationRef.current ?? current.society.population,
       );
       const presentedRoles = new Set<string>();
+      const presentedVisualSources = new Set<string>();
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
         const homeBuilding = homes[i % Math.max(1, homes.length)];
@@ -781,6 +782,7 @@ export function WorldView({
         citizen.userData.child = child;
         citizen.userData.role = role;
         presentedRoles.add(role);
+        presentedVisualSources.add(String(citizen.userData.visualSource ?? "unknown"));
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
@@ -817,6 +819,7 @@ export function WorldView({
       }
       host.dataset.citizenRoles = [...presentedRoles].sort().join(",");
       host.dataset.citizenRoleCount = String(presentedRoles.size);
+      host.dataset.citizenVisualSources = [...presentedVisualSources].sort().join(",");
 
       const disconnectedRoutes = citizensRef.current.filter(
         (citizen) => citizen.userData.routingConnected === false,
