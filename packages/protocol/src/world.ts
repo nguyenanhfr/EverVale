@@ -3,6 +3,7 @@ import type { WorldSpeed, WorldState } from "@evervale/domain/world.types";
 export interface BuildCatalogEntryDto {
   id: string;
   name: string;
+  category: string;
   techTier: number;
   moneyCost: number;
   varumCost: number;
