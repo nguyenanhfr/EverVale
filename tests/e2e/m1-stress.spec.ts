@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 test("M1.4 stress: 40 citizens stay routed and renderer memory remains bounded", async ({ page }) => {
@@ -10,7 +11,7 @@ test("M1.4 stress: 40 citizens stay routed and renderer memory remains bounded",
   });
 
   await page.goto("/?stressCitizens=40");
-  await page.getByLabel("Builder name").fill("e2e-stress");
+  await page.getByLabel("Builder name").fill(`stress-${randomUUID().slice(0, 8)}`);
   await page.getByRole("button", { name: "Enter the Vale" }).click();
 
   const worldView = page.locator(".world-view");
