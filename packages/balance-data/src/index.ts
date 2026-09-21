@@ -386,6 +386,7 @@ export interface WorkforcePolicyCandidate {
     later_high_slots: number;
     critical_reserved_for_emergency: boolean;
     building_local_priority_scale: number;
+    category_tie_order: string[];
   };
   semantic_levels: Record<WorkforcePriorityLevel, number>;
   categories: Record<string, {
