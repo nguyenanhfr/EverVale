@@ -19,6 +19,8 @@ const generatedFactories: Partial<
   Record<CitizenPresentationRole, CitizenVisualFactory>
 > = { ...generatedCitizenFactories };
 
+const GENERATED_DETAIL_SLOT_LIMIT = 18;
+
 export function registerGeneratedCitizenFactory(
   role: CitizenPresentationRole,
   factory: CitizenVisualFactory,
@@ -29,7 +31,7 @@ export function registerGeneratedCitizenFactory(
 function normalizeCitizenObject(
   object: THREE.Object3D,
   context: CitizenVisualFactoryContext,
-  source: "generated_factory" | "procedural",
+  source: "generated_factory" | "procedural" | "procedural_lod",
 ): THREE.Object3D {
   object.userData.visualRole = context.role;
   object.userData.visualSource = source;
@@ -49,7 +51,11 @@ export function createCitizenVisualFromRegistry(
   context: CitizenVisualFactoryContext,
 ): THREE.Object3D {
   const generated = generatedFactories[context.role];
-  if (generated) {
+  const useGeneratedDetail =
+    Boolean(generated) &&
+    context.presentationSlot < GENERATED_DETAIL_SLOT_LIMIT;
+
+  if (useGeneratedDetail && generated) {
     return normalizeCitizenObject(generated(context), context, "generated_factory");
   }
 
@@ -62,6 +68,6 @@ export function createCitizenVisualFromRegistry(
       context.castShadow,
     ),
     context,
-    "procedural",
+    generated ? "procedural_lod" : "procedural",
   );
 }
