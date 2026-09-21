@@ -190,12 +190,13 @@ function allocateCategoryFloorThenPriority(
   const assignment = initAssignment(units);
   let available = workforce;
   const active = units.filter((unit) => unit.level !== "paused");
-  const categories = [...new Set(active.map((unit) => unit.category))]
+  const floorEligible = active.filter((unit) => unit.level !== "low");
+  const categories = [...new Set(floorEligible.map((unit) => unit.category))]
     .sort((a, b) => categoryOrder(a) - categoryOrder(b) || a.localeCompare(b));
 
   for (const category of categories) {
     if (available <= 0) break;
-    const candidates = active
+    const candidates = floorEligible
       .filter((unit) => unit.category === category)
       .sort((a, b) => b.effectivePriority - a.effectivePriority || a.id.localeCompare(b.id));
 
