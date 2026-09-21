@@ -189,3 +189,23 @@ Added without touching visual systems:
 - protocol/server/application regression tests
 
 M1.6 exit is PASS on PR #3: TypeScript, unit, production build, browser/API E2E, migration first-run + safe rerun, real PostgreSQL integration, and preflight are green.
+
+
+## M1.7 authoritative read checkpoints
+
+See:
+`docs/78_M1_7_AUTHORITATIVE_READ_CHECKPOINTS.md`
+
+Engineering branch:
+`chatgpt/m1-7-authoritative-checkpoints`
+
+Runtime-only scope:
+- keep ordinary GET polling projection-only
+- checkpoint non-paused read progression every 5 real minutes
+- checkpoint material simulation boundaries immediately
+- persist read-resolved combat aftermath/events exactly once
+- protect checkpoint writes with revision CAS
+- reload committed winner after checkpoint CAS race
+- create no command receipt for read checkpoints
+
+Final M1.7 exit requires full preflight, TypeScript, unit, build, browser/API E2E, migration rerun, and PostgreSQL integration PASS.
