@@ -39,5 +39,4 @@ acceptance:
     - utilities
     - industry
     - education
-    - defense
   paused_requires_zero_category: industry
