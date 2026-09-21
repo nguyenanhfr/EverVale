@@ -7,6 +7,7 @@ export interface DefenseReadinessCase {
   guardActorsDeployed: number;
   outcome: string | null;
   conditionLoss: number;
+  repairSpend: number;
 }
 
 export interface DefenseReadinessLabReport {
@@ -29,7 +30,12 @@ function totalConditionLoss(before: Map<string, number>, after: Awaited<ReturnTy
   return loss;
 }
 
-async function runCase(workersAssigned: number, seed: number): Promise<DefenseReadinessCase> {
+export async function runDefenseReadinessCase(options: {
+  workersAssigned: number;
+  seed: number;
+  extraEnemies?: Record<string, number>;
+}): Promise<DefenseReadinessCase> {
+  const { workersAssigned, seed } = options;
   const readiness = loadDefenseReadinessCandidate();
   const harness = new SimHarness({
     seed,
@@ -84,7 +90,18 @@ async function runCase(workersAssigned: number, seed: number): Promise<DefenseRe
   const deployment = harness.defenseDeployments.at(-1);
   if (!deployment) throw new Error("DEVSIM_DEFENSE_DEPLOYMENT_MISSING");
 
+  if (options.extraEnemies && Object.keys(options.extraEnemies).length > 0) {
+    harness.amplifyCurrentCombat(options.extraEnemies);
+  }
+
   const resolved = await harness.advance(120);
+  let repairSpend = 0;
+  for (const building of resolved.buildings.filter(
+    (item) => item.damageState === "DAMAGED" || item.damageState === "DISABLED",
+  )) {
+    const repair = await harness.repairBuilding(building.id);
+    if (repair.accepted) repairSpend += Math.max(0, -repair.moneyDelta);
+  }
 
   return {
     workersAssigned: clampedWorkers,
@@ -92,14 +109,15 @@ async function runCase(workersAssigned: number, seed: number): Promise<DefenseRe
     guardActorsDeployed: deployment.guardActorsAfter,
     outcome: resolved.combat?.outcome ?? null,
     conditionLoss: totalConditionLoss(beforeConditions, resolved),
+    repairSpend,
   };
 }
 
 export async function runDefenseReadinessLab(seed = 1): Promise<DefenseReadinessLabReport> {
   const readiness = loadDefenseReadinessCandidate();
-  const zero = await runCase(0, seed);
-  const half = await runCase(1, seed + 1);
-  const full = await runCase(2, seed + 2);
+  const zero = await runDefenseReadinessCase({ workersAssigned: 0, seed });
+  const half = await runDefenseReadinessCase({ workersAssigned: 1, seed: seed + 1 });
+  const full = await runDefenseReadinessCase({ workersAssigned: 2, seed: seed + 2 });
 
   const gates = [
     {
