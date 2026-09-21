@@ -6,13 +6,21 @@ import { happinessTarget, smoothHappiness } from "./happiness.js";
 import { advancePopulation } from "./population.js";
 import { beautyFromProps } from "./props.js";
 import { advanceRepairs } from "./repair.js";
-import { allocateWorkforce, applyWorkforceToSociety } from "./workforce.js";
+import { allocateWorkforce, applyWorkforceToSociety, type WorkforceResult } from "./workforce.js";
 import type { SimulationDefinitions, WorldState } from "./world.types.js";
 
-export function advanceWorld(
+export type WorkforceAllocator = (
+  population: number,
+  buildings: WorldState["buildings"],
+  definitions: SimulationDefinitions["buildings"],
+  combatActive: boolean,
+) => WorkforceResult;
+
+export function advanceWorldWithAllocator(
   input: WorldState,
   definitions: SimulationDefinitions,
   realDeltaSeconds: number,
+  workforceAllocator: WorkforceAllocator,
 ): WorldState {
   if (input.speed === 0 || realDeltaSeconds <= 0) return input;
 
@@ -24,7 +32,12 @@ export function advanceWorld(
     deltaSeconds,
   );
   const combatActive = world.combat?.status === "ACTIVE" || world.combat?.status === "WARNING";
-  const workforce = allocateWorkforce(world.society.population, world.buildings, definitions.buildings, combatActive);
+  const workforce = workforceAllocator(
+    world.society.population,
+    world.buildings,
+    definitions.buildings,
+    combatActive,
+  );
 
   let moneyIncome = 0;
   let powerProduction = 0;
@@ -152,4 +165,18 @@ export function advanceWorld(
   };
 
   return advanceCombat(world, definitions, deltaSeconds);
+}
+
+
+export function advanceWorld(
+  input: WorldState,
+  definitions: SimulationDefinitions,
+  realDeltaSeconds: number,
+): WorldState {
+  return advanceWorldWithAllocator(
+    input,
+    definitions,
+    realDeltaSeconds,
+    allocateWorkforce,
+  );
 }
