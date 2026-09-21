@@ -1,4 +1,5 @@
 import {
+  loadDefenseReadinessCandidate,
   loadGameData,
   loadWorkforcePolicyCandidate,
   type WorkforcePolicyCandidate,
@@ -678,6 +679,296 @@ export async function runWorkforcePolicyPack(options: {
       emergency,
       rapidA,
       rapidB,
+    },
+  };
+}
+
+
+export async function runWorkforceCandidatePolicyPack(options: {
+  seed?: number;
+  hours?: number;
+} = {}): Promise<WorkforcePolicyPackReport> {
+  const policy = loadWorkforcePolicyCandidate();
+  const readiness = loadDefenseReadinessCandidate();
+  const seed = options.seed ?? 1;
+  const hours = options.hours ?? policy.devsim.test_hours;
+  const buildPlan = policy.devsim.balanced_build_plan;
+  const defenseReadiness = {
+    sourceBuildingDefinitionId: readiness.guard.source_building,
+    guardActorDefinitionId: readiness.guard.unit_definition,
+    slotsPerSource: readiness.guard.slots_per_source,
+  };
+
+  const balancedController = createCategoryFloorPolicyController("balanced_default");
+  const industryController = createCategoryFloorPolicyController("industry_high");
+  const educationController = createCategoryFloorPolicyController("education_high");
+  const defenseBalancedController = createCategoryFloorPolicyController("balanced_default");
+  const defenseController = createCategoryFloorPolicyController("defense_high");
+  const pausedController = createCategoryFloorPolicyController("industry_paused");
+
+  const balanced = await runScenario({
+    scenarioId: "healthy_planner",
+    hours,
+    seed,
+    buildPlan,
+    workforceAllocator: balancedController.allocator,
+  });
+
+  const industry = await runScenario({
+    scenarioId: "healthy_planner",
+    hours,
+    seed,
+    buildPlan,
+    workforceAllocator: industryController.allocator,
+  });
+
+  const education = await runScenario({
+    scenarioId: "healthy_planner",
+    hours,
+    seed,
+    buildPlan,
+    workforceAllocator: educationController.allocator,
+  });
+
+  const defenseBalanced = await runScenario({
+    scenarioId: "balanced_hybrid",
+    hours,
+    seed,
+    buildPlan,
+    workforceAllocator: defenseBalancedController.allocator,
+    defenseReadiness,
+  });
+
+  const defense = await runScenario({
+    scenarioId: "balanced_hybrid",
+    hours,
+    seed,
+    buildPlan,
+    workforceAllocator: defenseController.allocator,
+    defenseReadiness,
+  });
+
+  const pausedIndustry = await runScenario({
+    scenarioId: "healthy_planner",
+    hours,
+    seed,
+    buildPlan,
+    workforceAllocator: pausedController.allocator,
+  });
+
+  const emergencyStart = 2 * 60 * 60;
+  const emergencyEnd = 3 * 60 * 60;
+  const emergencyController = createCategoryFloorPolicyController("industry_high");
+  const emergencyLevels = {
+    ...policy.profiles.industry_high!,
+    utilities: policy.emergency.utilities.override_level,
+    industry: "normal" as WorkforcePriorityLevel,
+  };
+  let emergencyOn = false;
+  let emergencyOff = false;
+  const emergency = await runScenario({
+    scenarioId: "healthy_planner",
+    hours: Math.max(4, Math.min(hours, 6)),
+    seed,
+    buildPlan,
+    workforceAllocator: emergencyController.allocator,
+    resourceTransitions: [
+      {
+        atSeconds: emergencyStart,
+        label: "LOW_UTILITY_RESERVES",
+        resources: { power: 5, water: 5 },
+      },
+    ],
+    includeSeries: true,
+    beforeStep(elapsed) {
+      if (!emergencyOn && elapsed >= emergencyStart) {
+        emergencyController.setLevels(emergencyLevels, { allowCritical: true });
+        emergencyOn = true;
+      }
+      if (!emergencyOff && elapsed >= emergencyEnd) {
+        emergencyController.setProfile("industry_high");
+        emergencyOff = true;
+      }
+    },
+  });
+
+  const rapidCount = policy.gates.rapid_switch_count;
+  const rapidInterval = policy.devsim.rapid_switch_interval_seconds;
+  const rapidHours = Math.max(4, (rapidCount * rapidInterval) / 3600 + 1);
+
+  const runRapid = async () => {
+    const controller = createCategoryFloorPolicyController("balanced_default");
+    let applied = 0;
+    const report = await runScenario({
+      scenarioId: "healthy_planner",
+      hours: rapidHours,
+      seed,
+      buildPlan,
+      workforceAllocator: controller.allocator,
+      beforeStep(elapsed) {
+        const targetApplied = Math.min(
+          rapidCount,
+          Math.floor(elapsed / rapidInterval),
+        );
+        while (applied < targetApplied) {
+          controller.setProfile(applied % 2 === 0 ? "industry_high" : "education_high");
+          applied += 1;
+        }
+      },
+    });
+    return { report, applied };
+  };
+
+  const rapidA = await runRapid();
+  const rapidB = await runRapid();
+
+  let omniHighError: string | null = null;
+  try {
+    compileWorkforceProfile("omni_high_invalid");
+  } catch (error) {
+    omniHighError = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+  }
+
+  const scenarios = [
+    scenarioSummary("W0_BALANCED_DEFAULT", "balanced_default", balanced, policy),
+    scenarioSummary("W1_INDUSTRY_HIGH", "industry_high", industry, policy),
+    scenarioSummary("W2_EDUCATION_HIGH", "education_high", education, policy),
+    scenarioSummary("W3_DEFENSE_HIGH", "defense_high", defense, policy),
+    scenarioSummary("W5_PAUSED_INDUSTRY", "industry_paused", pausedIndustry, policy),
+  ];
+
+  const emergencyBefore = sampleAtOrBefore(emergency.series, emergencyStart);
+  const emergencyAfter = sampleAtOrAfter(
+    emergency.series,
+    emergencyStart + rapidInterval,
+  );
+  const beforeUtilityWorkers = emergencyBefore
+    ? strategicCategoryWorkers(emergencyBefore, policy, "utilities")
+    : 0;
+  const emergencyUtilityWorkers = emergencyAfter
+    ? strategicCategoryWorkers(emergencyAfter, policy, "utilities")
+    : 0;
+  const recoverySeconds = firstUtilityRecovery(
+    emergency.series,
+    emergencyStart,
+    policy.emergency.utilities.reserve_ratio_trigger,
+  );
+
+  const pausedSummary = scenarios.find((item) => item.id === "W5_PAUSED_INDUSTRY")!;
+  const gates: WorkforceGate[] = [
+    {
+      id: "WG0_BALANCED_DEFAULT",
+      pass:
+        balanced.ledger.schoolZeroStaffSeconds / 3600 <=
+          policy.gates.balanced_school_zero_staff_max_hours &&
+        balanced.diagnostics.filter((item) => item.severity === "CRITICAL").length <=
+          policy.gates.balanced_critical_diagnostics_max,
+      detail:
+        `School zero-staff=${(balanced.ledger.schoolZeroStaffSeconds / 3600).toFixed(2)}h; critical diagnostics=${balanced.diagnostics.filter((item) => item.severity === "CRITICAL").length}.`,
+    },
+    {
+      id: "WG1_INDUSTRY_OPPORTUNITY_COST",
+      pass:
+        industry.final.money >=
+          balanced.final.money + policy.gates.opportunity_cost_min_money_difference &&
+        industry.final.techPoints <
+          balanced.final.techPoints - policy.gates.opportunity_cost_min_tech_difference,
+      detail:
+        `Money balanced=${balanced.final.money.toFixed(1)}, industry=${industry.final.money.toFixed(1)}; Tech balanced=${balanced.final.techPoints.toFixed(1)}, industry=${industry.final.techPoints.toFixed(1)}.`,
+    },
+    {
+      id: "WG2_EDUCATION_OPPORTUNITY_COST",
+      pass:
+        education.final.techPoints >=
+          balanced.final.techPoints + policy.gates.opportunity_cost_min_tech_difference &&
+        education.final.money <
+          balanced.final.money - policy.gates.opportunity_cost_min_money_difference,
+      detail:
+        `Tech balanced=${balanced.final.techPoints.toFixed(1)}, education=${education.final.techPoints.toFixed(1)}; Money balanced=${balanced.final.money.toFixed(1)}, education=${education.final.money.toFixed(1)}.`,
+    },
+    {
+      id: "WG3_DEFENSE_OPPORTUNITY_COST",
+      pass:
+        defense.combatSummary.totalConditionLoss <
+          defenseBalanced.combatSummary.totalConditionLoss &&
+        defense.final.money < defenseBalanced.final.money,
+      detail:
+        `Condition loss balanced=${defenseBalanced.combatSummary.totalConditionLoss}, defense=${defense.combatSummary.totalConditionLoss}; Money balanced=${defenseBalanced.final.money.toFixed(1)}, defense=${defense.final.money.toFixed(1)}.`,
+    },
+    {
+      id: "WG4_UTILITY_EMERGENCY",
+      pass:
+        emergencyUtilityWorkers >= beforeUtilityWorkers &&
+        recoverySeconds !== null &&
+        recoverySeconds <= policy.gates.emergency_recovery_max_hours * 3600,
+      detail:
+        `Utility workers before=${beforeUtilityWorkers}, emergency=${emergencyUtilityWorkers}; recovery=${recoverySeconds === null ? "none" : Math.round(recoverySeconds / 60) + "m"}.`,
+    },
+    {
+      id: "WG5_PAUSED_MEANS_ZERO",
+      pass: (pausedSummary.finalCategoryWorkers.industry ?? 0) === 0,
+      detail:
+        `Industry workers under PAUSED candidate=${pausedSummary.finalCategoryWorkers.industry ?? 0}.`,
+    },
+    {
+      id: "WG6_RAPID_SWITCH_DETERMINISTIC",
+      pass:
+        JSON.stringify(rapidA.report.final) === JSON.stringify(rapidB.report.final) &&
+        JSON.stringify(rapidA.report.milestones) === JSON.stringify(rapidB.report.milestones) &&
+        rapidA.applied === rapidCount &&
+        rapidB.applied === rapidCount,
+      detail:
+        `Transitions applied=${rapidA.applied}/${rapidCount}; deterministic=${JSON.stringify(rapidA.report.final) === JSON.stringify(rapidB.report.final)}.`,
+    },
+    {
+      id: "WG7_OMNI_HIGH_REJECTED",
+      pass: omniHighError?.startsWith("WORKFORCE_HIGH_SLOT_LIMIT:") ?? false,
+      detail: `Omni-HIGH validation result=${omniHighError ?? "accepted"}.`,
+    },
+  ];
+
+  return {
+    modelRevision: `${policy.model_revision}+category-floor+defense-readiness`,
+    policyVersion: policy.version,
+    seed,
+    hours,
+    scenarios,
+    gates,
+    emergency: {
+      recoverySeconds,
+      beforeUtilityWorkers,
+      emergencyUtilityWorkers,
+      finalPower: emergency.final.power,
+      finalWater: emergency.final.water,
+    },
+    rapidSwitch: {
+      deterministic:
+        JSON.stringify(rapidA.report.final) === JSON.stringify(rapidB.report.final) &&
+        JSON.stringify(rapidA.report.milestones) === JSON.stringify(rapidB.report.milestones),
+      transitionsApplied: rapidA.applied,
+      expectedTransitions: rapidCount,
+    },
+    omniHigh: {
+      rejected: omniHighError?.startsWith("WORKFORCE_HIGH_SLOT_LIMIT:") ?? false,
+      error: omniHighError,
+    },
+    unresolvedRuntimeCapabilities: [
+      "Candidate category-floor allocation is injected only in DevSim; production still uses flat building priority.",
+      "Defense Readiness staffed-source filtering is injected only in DevSim; production triggerM1Wave still counts completed Guard Posts.",
+      "State-driven utility emergency hysteresis is not implemented in production.",
+      "Player-facing priority state/commands are not implemented.",
+      "Funding priority remains separate and unimplemented.",
+    ],
+    reports: {
+      balanced,
+      industry,
+      education,
+      defenseBalanced,
+      defense,
+      pausedIndustry,
+      emergency,
+      rapidA: rapidA.report,
+      rapidB: rapidB.report,
     },
   };
 }
