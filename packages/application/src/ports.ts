@@ -28,6 +28,7 @@ export interface WorldRepository {
     previousRevision: number,
     acceptedCommand?: AcceptedCommandContext,
   ): Promise<void>;
+  close?(): Promise<void>;
 }
 
 export interface IdGenerator {
