@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { stableVisualHash } from "./visual-identity";
 import { environmentDialectForSeed, type EnvironmentDialectPalette } from "./environment/environment-dialect";
+import { createDialectVegetation } from "./environment/dialect-vegetation-visual";
 
 export interface EnvironmentVisualRig {
   scene: THREE.Scene;
@@ -78,9 +79,9 @@ function addPerimeterLandscape(
 
   const rockGeo=new THREE.DodecahedronGeometry(0.72,0);
   const rockMat=new THREE.MeshStandardMaterial({color:palette.rock,roughness:1,flatShading:true});
-  const rocks=new THREE.InstancedMesh(rockGeo,rockMat,18);
+  const rocks=new THREE.InstancedMesh(rockGeo,rockMat,palette.composition.rockCount);
   const dummy=new THREE.Object3D();
-  for(let i=0;i<18;i+=1) {
+  for(let i=0;i<palette.composition.rockCount;i+=1) {
     const side=i%2===0?-1:1;
     dummy.position.set(side*(43+pseudo(seedOffset+i+1)*8),0.38+pseudo(seedOffset+i+12)*0.25,-42+pseudo(seedOffset+i+33)*86);
     dummy.rotation.set(pseudo(seedOffset+i+2)*1.3,pseudo(seedOffset+i+7)*Math.PI*2,pseudo(seedOffset+i+11)*1.1);
@@ -140,8 +141,8 @@ function addPerimeterLandscape(
     roughness: 1,
     flatShading: true,
   });
-  const grass = new THREE.InstancedMesh(grassBladeGeo, grassBladeMat, 120);
-  for (let i = 0; i < 120; i += 1) {
+  const grass = new THREE.InstancedMesh(grassBladeGeo, grassBladeMat, palette.composition.grassCount);
+  for (let i = 0; i < palette.composition.grassCount; i += 1) {
     const angle = pseudo(seedOffset + i + 500) * Math.PI * 2;
     const radius = 29 + pseudo(seedOffset + i + 520) * 19;
     dummy.position.set(
@@ -170,8 +171,8 @@ function addPerimeterLandscape(
     roughness: 0.95,
     flatShading: true,
   });
-  const flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, 48);
-  for (let i = 0; i < 48; i += 1) {
+  const flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, palette.composition.flowerCount);
+  for (let i = 0; i < palette.composition.flowerCount; i += 1) {
     const angle = pseudo(seedOffset + i + 700) * Math.PI * 2;
     const radius = 27 + pseudo(seedOffset + i + 720) * 17;
     dummy.position.set(
@@ -189,46 +190,7 @@ function addPerimeterLandscape(
   flowers.castShadow = false;
   group.add(flowers);
 
-  const trunkGeo = new THREE.CylinderGeometry(0.16, 0.24, 2.15, 6);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: palette.trunk, roughness: 1 });
-  const treeTrunks = new THREE.InstancedMesh(trunkGeo, trunkMat, 22);
-  const crownGeo = new THREE.DodecahedronGeometry(0.82, 0);
-  const crownMat = new THREE.MeshStandardMaterial({
-    color: palette.crown,
-    roughness: 1,
-    flatShading: true,
-  });
-  const treeCrowns = new THREE.InstancedMesh(crownGeo, crownMat, 22);
-  for (let i = 0; i < 22; i += 1) {
-    const angle = (i / 22) * Math.PI * 2 + (pseudo(seedOffset + i + 820) - 0.5) * 0.2;
-    const radius = 43 + pseudo(seedOffset + i + 840) * 7;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    const s = 0.78 + pseudo(seedOffset + i + 860) * 0.65;
-
-    dummy.position.set(x, 1.05 * s, z);
-    dummy.rotation.set(0, pseudo(seedOffset + i + 880) * Math.PI * 2, 0);
-    dummy.scale.set(s, s, s);
-    dummy.updateMatrix();
-    treeTrunks.setMatrixAt(i, dummy.matrix);
-
-    dummy.position.set(x, 2.55 * s, z);
-    dummy.rotation.set(
-      0,
-      pseudo(seedOffset + i + 900) * Math.PI * 2,
-      (pseudo(seedOffset + i + 920) - 0.5) * 0.12,
-    );
-    dummy.scale.set(1.05 * s, 0.88 * s, 1.05 * s);
-    dummy.updateMatrix();
-    treeCrowns.setMatrixAt(i, dummy.matrix);
-  }
-  treeTrunks.instanceMatrix.needsUpdate = true;
-  treeCrowns.instanceMatrix.needsUpdate = true;
-  treeTrunks.castShadow = false;
-  treeCrowns.castShadow = false;
-  treeTrunks.receiveShadow = true;
-  treeCrowns.receiveShadow = true;
-  group.add(treeTrunks, treeCrowns);
+  group.add(createDialectVegetation(worldSeed, palette));
 
   scene.add(group);
 }
