@@ -9,6 +9,7 @@ import { createBuildingVisual } from "./building-visual";
 import { createRoadVisual } from "./road-visual";
 import { animateCitizenVisual, createCitizenVisual, createDogVisual } from "./actor-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
+import { citizenRoleForWorkplace, resolveBuildingVisualIdentities, resolveWorldVisualDialect } from "./visual-identity";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
 import {
   constructionVisualState,
@@ -334,7 +335,7 @@ export function WorldView({
     controls.minDistance = 22;
     controls.maxDistance = 120;
 
-    const environment = createEnvironmentVisuals(scene, renderer);
+    const environment = createEnvironmentVisuals(scene, renderer, worldRef.current.seed);
     const ambient = createAmbientVisuals(scene);
     const ground = environment.ground;
 
@@ -603,6 +604,7 @@ export function WorldView({
         visualPopulationRef.current ?? current.society.population,
       );
       return [
+        current.seed,
         current.revision,
         selectedPropIdRef.current ?? "",
         population,
@@ -632,12 +634,16 @@ export function WorldView({
         (building) => building.constructionState === "BUILDING",
       );
 
+      const buildingIdentities = resolveBuildingVisualIdentities(current.seed, current.buildings);
+      host.dataset.visualDialect = resolveWorldVisualDialect(current.seed).id;
+
       current.buildings.forEach((building) => {
         const meta = buildCatalogRef.current.find((item) => item.id === building.definitionId);
+        const identity = buildingIdentities.get(building.id);
         const visual =
           building.constructionState === "BUILDING"
             ? createConstructionObject(building, meta)
-            : createBuildingVisual(building, meta);
+            : createBuildingVisual(building, meta, identity!);
         visual.traverse((child) => {
           const mesh = child as THREE.Mesh;
           if (mesh.userData.buildingGlow) buildingGlowRef.current.push(mesh);
@@ -735,12 +741,16 @@ export function WorldView({
       );
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const citizen = createCitizenVisual(i, child, i < 18);
+        const homeBuilding = homes[i % Math.max(1, homes.length)];
+        const home = homeBuilding?.position ?? { x: 0, y: 0, z: 0 };
+        const adultJobBuilding = jobs[i % Math.max(1, jobs.length)];
+        const adultJob = adultJobBuilding?.position ?? home;
+        const work = child ? (school?.position ?? home) : adultJob;
+        const role = citizenRoleForWorkplace(child, child ? "school" : adultJobBuilding?.definitionId);
+        const citizen = createCitizenVisual(current.seed, i, child, role, i < 18);
         citizen.userData.index = i;
         citizen.userData.child = child;
-        const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
-        const adultJob = jobs[i % Math.max(1, jobs.length)]?.position ?? home;
-        const work = child ? (school?.position ?? home) : adultJob;
+        citizen.userData.role = role;
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
@@ -784,7 +794,7 @@ export function WorldView({
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
 
       if (homes.length > 0) {
-        const dog = createDogVisual();
+        const dog = createDogVisual(current.seed);
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
