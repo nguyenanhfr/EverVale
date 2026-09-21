@@ -15,6 +15,7 @@ import { runStrategicPathPack } from "./strategic-paths.js";
 import { runWorkforceCandidatePolicyPack, runWorkforcePolicyPack } from "./workforce-policy.js";
 import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
 import { runDefenseReadinessLab } from "./defense-readiness.js";
+import { runPveRewardSweep } from "./pve-reward.js";
 
 function flag(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -171,6 +172,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "pve-reward") {
+    const seed = numberFlag(args, "--seed", 91);
+    console.log(JSON.stringify(await runPveRewardSweep(seed), null, 2));
+    return;
+  }
+
   if (command === "roi") {
     console.log(JSON.stringify(await buildRoiReport(), null, 2));
     return;
@@ -248,6 +255,7 @@ async function main(): Promise<void> {
     "  workforce-candidate [--hours 8] [--seed 1]",
     "  allocator-lab",
     "  defense-readiness [--seed 1]",
+    "  pve-reward [--seed 91]",
     "  roi",
     "  graph",
     "  authority-test",
