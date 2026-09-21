@@ -19,6 +19,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/**/*.test.ts",
     "db:migrate": "tsx src/migrate.ts",
-    "test:postgres": "node --import tsx --test src/postgres-world-repository.integration.ts"
+    "test:postgres": "node --import tsx --test src/postgres-world-repository.integration.ts",
+    "db:doctor": "tsx src/world-doctor.ts",
+    "db:recover-world": "tsx src/recover-world.ts"
   }
 }
