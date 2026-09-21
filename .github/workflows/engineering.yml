@@ -21,6 +21,8 @@ jobs:
         run: pnpm devsim:smoke
       - name: DevSim 8h economy baseline report
         run: pnpm devsim baseline --hours 8 --seed 1
+      - name: DevSim strategic path Constitution report
+        run: pnpm devsim paths --hours 8 --strong-hours 12 --seed 1
       - name: DevSim utility sensitivity report
         run: |
           pnpm devsim sweep power_plant powerProduction 12,16,18,20,22,24,28,40 --scenario overexpand --hours 8 --seed 1
