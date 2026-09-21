@@ -68,6 +68,7 @@ export default function App() {
   const [message, setMessage] = useState("Loading world...");
   const [metrics, setMetrics] = useState<RuntimeMetrics | null>(null);
   const [routingHealth, setRoutingHealth] = useState({ routed: 0, disconnected: 0 });
+  const [dismissedCombatId, setDismissedCombatId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!ownerId) return;
@@ -281,6 +282,20 @@ export default function App() {
 
   const damaged = w.buildings.filter((b) => b.damageState !== "HEALTHY");
   const constructing = w.buildings.filter((b) => b.constructionState === "BUILDING");
+  const activeCombat = w.combat && w.combat.status !== "RESOLVED" ? w.combat : null;
+  const combatResult =
+    w.combat && w.combat.status === "RESOLVED" && w.combat.outcome && dismissedCombatId !== w.combat.id
+      ? w.combat
+      : null;
+  const enemyActors = activeCombat?.actors.filter((actor) => actor.side === "ENEMY") ?? [];
+  const defenderActors = activeCombat?.actors.filter((actor) => actor.side === "DEFENDER") ?? [];
+  const hpRatio = (actors: typeof enemyActors) => {
+    const max = actors.reduce((sum, actor) => sum + Math.max(1, actor.maxHp), 0);
+    if (max <= 0) return 0;
+    return Math.max(0, Math.min(1, actors.reduce((sum, actor) => sum + Math.max(0, actor.hp), 0) / max));
+  };
+  const hostileIntegrity = hpRatio(enemyActors);
+  const defenseIntegrity = hpRatio(defenderActors);
   const worldMinute = Math.floor(w.simulationSeconds % 1440);
   const worldHour = Math.floor(worldMinute / 60);
   const worldClock = `${String(worldHour).padStart(2, "0")}:${String(worldMinute % 60).padStart(2, "0")}`;
@@ -348,6 +363,46 @@ export default function App() {
       </header>
 
       {combatLabel && <div className="combat-banner" data-testid="combat-status">{combatLabel}</div>}
+
+      {activeCombat?.status === "ACTIVE" && (
+        <section className="combat-hud hud-panel" aria-label="Active combat status">
+          <div className="combat-hud-title">
+            <span className="eyebrow">ACTIVE CONTACT</span>
+            <strong>Town Defense</strong>
+          </div>
+          <div className="combat-meter-row">
+            <span>Hostile strength</span>
+            <div className="combat-meter hostile"><i style={{ width: `${Math.round(hostileIntegrity * 100)}%` }} /></div>
+          </div>
+          <div className="combat-meter-row">
+            <span>Defense integrity</span>
+            <div className="combat-meter defender"><i style={{ width: `${Math.round(defenseIntegrity * 100)}%` }} /></div>
+          </div>
+          <div className="combat-hud-foot">
+            <span>{enemyActors.filter((actor) => actor.hp > 0).length} hostiles active</span>
+            <span>{defenderActors.filter((actor) => actor.hp > 0).length} defenders active</span>
+          </div>
+        </section>
+      )}
+
+      {combatResult && (
+        <section className="battle-result hud-panel" data-testid="battle-result">
+          <span className="eyebrow">AFTER ACTION</span>
+          <h2>{combatResult.outcome === "CLEAN" ? "Repelled — Clean" : combatResult.outcome === "COSTLY" ? "Repelled — Costly" : "Breached"}</h2>
+          <p>{combatResult.summary ?? "The town has returned to recovery operations."}</p>
+          <div className="battle-result-grid">
+            <div><small>Structures affected</small><b>{damaged.length}</b></div>
+            <div><small>Defenders standing</small><b>{combatResult.actors.filter((actor) => actor.side === "DEFENDER" && actor.hp > 0).length}</b></div>
+            <div><small>Hostiles remaining</small><b>{combatResult.actors.filter((actor) => actor.side === "ENEMY" && actor.hp > 0).length}</b></div>
+          </div>
+          <div className="battle-result-note">
+            Rewards are server-authoritative and are not shown until the runtime reward ledger is implemented.
+          </div>
+          <button className="inspector-primary" onClick={() => setDismissedCombatId(combatResult.id)}>
+            Return to Town
+          </button>
+        </section>
+      )}
 
       {recentEvents.length > 0 && (
         <aside className="event-stack" aria-label="Town events">
