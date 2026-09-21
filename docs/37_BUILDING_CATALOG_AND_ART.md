@@ -380,3 +380,13 @@ Building assets export authored anchors:
 - patrol_origin
 
 This keeps world behavior data-driven instead of hardcoded into scene coordinates.
+
+
+## Authored variant authority
+
+Repeated building instances must follow the anti-clone and world-dialect rules in:
+
+- `docs/78_VISUAL_IDENTITY_VARIATION_SYSTEM.md`
+- `data/presentation/v0.1/visual_identities.yaml`
+
+The art tags in this catalog define family identity. Doc 78 defines how multiple instances of the same family become distinct without changing gameplay authority.
