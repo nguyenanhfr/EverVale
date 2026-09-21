@@ -90,7 +90,7 @@ test("accepted command is idempotent through real HTTP and JSON persistence", as
       "content-type": "application/json",
       "x-evervale-owner": OWNER,
     },
-    data: "{",
+    data: Buffer.from("{", "utf8"),
   });
   expect(malformedJson.status()).toBe(400);
   expect((await malformedJson.json()).error).toBe("INVALID_JSON");
