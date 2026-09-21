@@ -12,6 +12,7 @@ import {
 } from "./scenarios.js";
 import type { BuildingDefinition } from "@evervale/domain/world.types";
 import { runStrategicPathPack } from "./strategic-paths.js";
+import { runWorkforcePolicyPack } from "./workforce-policy.js";
 
 function flag(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -142,6 +143,14 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "workforce") {
+    const hours = numberFlag(args, "--hours", 8);
+    const seed = numberFlag(args, "--seed", 1);
+    const report = await runWorkforcePolicyPack({ hours, seed });
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+
   if (command === "roi") {
     console.log(JSON.stringify(await buildRoiReport(), null, 2));
     return;
@@ -215,6 +224,7 @@ async function main(): Promise<void> {
     "  scenario <id> [--hours 8] [--seed 1] [--series] [--full]",
     "  baseline [--hours 8] [--seed 1]",
     "  paths [--hours 8] [--long-hours 12] [--strong-hours 12] [--seed 1]",
+    "  workforce [--hours 8] [--seed 1]",
     "  roi",
     "  graph",
     "  authority-test",
