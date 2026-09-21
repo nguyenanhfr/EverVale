@@ -219,6 +219,19 @@ export class SimHarness {
     }
   }
 
+  applyResourceFixture(
+    resources: Partial<WorldState["resources"]>,
+  ): void {
+    if (!this.repository.world) throw new Error("DEVSIM_WORLD_NOT_INITIALIZED");
+    this.repository.replaceForFixture({
+      ...this.repository.world,
+      resources: {
+        ...this.repository.world.resources,
+        ...resources,
+      },
+    });
+  }
+
   async world(): Promise<WorldState> {
     return this.service.getOrCreate(this.ownerId);
   }
