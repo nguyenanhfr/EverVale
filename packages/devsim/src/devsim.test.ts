@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAuthorityDriftReport, buildRoiReport, runAuthorityTamperProbe } from "./reports.js";
 import { runScenario } from "./scenarios.js";
+import { SimHarness } from "./core.js";
 import { runStrategicPathPack } from "./strategic-paths.js";
 
 test("healthy planner spends authoritative Money and queues real construction", async () => {
@@ -140,4 +141,33 @@ test("strategic path pack emits Constitution directional diagnostics without pre
       item.includes("Charter bonuses"),
     ),
   );
+});
+
+
+test("priority transition updates existing building instances, not only future definitions", async () => {
+  const harness = new SimHarness({
+    seed: 34,
+    buildingOverrides: {
+      workshop: { priority: 96 },
+      guard_post: { priority: 40 },
+    },
+  });
+  await harness.initialize();
+
+  const beforeWorkshop = harness.repository.world?.buildings.find(
+    (building) => building.definitionId === "workshop",
+  );
+  assert.ok(beforeWorkshop);
+  assert.equal(beforeWorkshop.priority, 96);
+
+  harness.applyBuildingOverrides({
+    workshop: { priority: 52 },
+    guard_post: { priority: 96 },
+  });
+
+  const afterWorkshop = harness.repository.world?.buildings.find(
+    (building) => building.definitionId === "workshop",
+  );
+  assert.ok(afterWorkshop);
+  assert.equal(afterWorkshop.priority, 52);
 });
