@@ -1,23 +1,22 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import { createServer, type Server } from "node:http";
 import path from "node:path";
 import { WorldService } from "@evervale/application/world-service";
 import type { Clock, IdGenerator, WorldRepository } from "@evervale/application/ports";
 import { loadGameData } from "@evervale/balance-data";
 import { JsonWorldRepository, PostgresWorldRepository } from "@evervale/persistence";
-import type { WorldCommand } from "@evervale/protocol/world";
+import { parseWorldCommand } from "@evervale/protocol/world-command-runtime";
+import {
+  configuredMaxBodyBytes,
+  readJsonBody,
+  requestOwner,
+  statusForError,
+} from "./http-boundary.js";
 
 const PORT = Number(process.env.PORT ?? 2567);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
+const MAX_BODY_BYTES = configuredMaxBodyBytes(process.env.EVERVALE_MAX_BODY_BYTES);
 const gameData = loadGameData();
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function validateCommandEnvelope(command: WorldCommand): void {
-  if (!UUID_PATTERN.test(command.commandId)) throw new Error("INVALID_COMMAND_ID");
-  if (!Number.isInteger(command.expectedRevision) || command.expectedRevision < 0) {
-    throw new Error("INVALID_EXPECTED_REVISION");
-  }
-}
 
 class NodeIds implements IdGenerator {
   next(): string {
@@ -37,41 +36,59 @@ function repository(): WorldRepository {
     console.info("[EverVale] persistence=postgres");
     return new PostgresWorldRepository(databaseUrl);
   }
-  const directory = path.resolve(process.cwd(), "../../.evervale/worlds");
-  console.warn("[EverVale] DATABASE_URL missing; using local JSON development persistence:", directory);
+
+  const directory = process.env.EVERVALE_JSON_DIR
+    ? path.resolve(process.env.EVERVALE_JSON_DIR)
+    : path.resolve(process.cwd(), "../../.evervale/worlds");
+  console.warn(
+    "[EverVale] DATABASE_URL missing; using local JSON development persistence:",
+    directory,
+  );
   return new JsonWorldRepository(directory);
 }
 
+const worldRepository = repository();
 const service = new WorldService({
-  repository: repository(),
+  repository: worldRepository,
   definitions: gameData.definitions,
   ids: new NodeIds(),
   clock: new SystemClock(),
 });
 
-function cors(res: ServerResponse): void {
+function cors(res: import("node:http").ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", CLIENT_ORIGIN);
   res.setHeader("Access-Control-Allow-Headers", "content-type,x-evervale-owner");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
 }
 
-function json(res: ServerResponse, status: number, body: unknown): void {
+function json(
+  res: import("node:http").ServerResponse,
+  status: number,
+  responseBody: unknown,
+): void {
   cors(res);
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.end(JSON.stringify(body));
+  res.end(JSON.stringify(responseBody));
 }
 
-async function body<T>(req: IncomingMessage): Promise<T> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as T;
-}
+function parseLoginInput(input: unknown): string {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("INVALID_LOGIN_BODY");
+  }
+  const handleValue = (input as Record<string, unknown>).handle;
+  if (handleValue !== undefined && typeof handleValue !== "string") {
+    throw new Error("INVALID_HANDLE");
+  }
 
-function owner(req: IncomingMessage): string {
-  const value = req.headers["x-evervale-owner"];
-  if (typeof value !== "string" || !value) throw new Error("UNAUTHORIZED");
-  return value;
+  const handle = (handleValue ?? "builder")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 32);
+
+  if (!handle) throw new Error("INVALID_HANDLE");
+  return handle;
 }
 
 const server = createServer(async (req, res) => {
@@ -91,16 +108,17 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === "/api/dev/login") {
-      if (process.env.EVERVALE_DEV_AUTH === "false") throw new Error("DEV_AUTH_DISABLED");
-      const input = await body<{ handle?: string }>(req);
-      const handle = (input.handle ?? "builder").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 32);
-      if (!handle) throw new Error("INVALID_HANDLE");
+      if (process.env.EVERVALE_DEV_AUTH === "false") {
+        throw new Error("DEV_AUTH_DISABLED");
+      }
+      const input = await readJsonBody<unknown>(req, MAX_BODY_BYTES);
+      const handle = parseLoginInput(input);
       json(res, 200, { ownerId: `dev:${handle}`, displayName: handle });
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/world") {
-      const world = await service.getOrCreate(owner(req));
+      const world = await service.getOrCreate(requestOwner(req));
       json(res, 200, {
         world,
         buildCatalog: gameData.buildCatalog,
@@ -112,9 +130,9 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === "/api/world/command") {
-      const command = await body<WorldCommand>(req);
-      validateCommandEnvelope(command);
-      const world = await service.command(owner(req), command);
+      const input = await readJsonBody<unknown>(req, MAX_BODY_BYTES);
+      const command = parseWorldCommand(input);
+      const world = await service.command(requestOwner(req), command);
       json(res, 200, { accepted: true, world });
       return;
     }
@@ -122,15 +140,40 @@ const server = createServer(async (req, res) => {
     json(res, 404, { error: "NOT_FOUND" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "INTERNAL_ERROR";
-    const status =
-      message === "UNAUTHORIZED" ? 401 :
-      message === "REVISION_CONFLICT" || message === "COMMAND_ID_CONFLICT" ? 409 :
-      message.startsWith("INVALID_") || message.startsWith("NOT_ENOUGH") || message.startsWith("NO_") || message.startsWith("REPAIR_") || message.startsWith("BLOCKER_") || message.startsWith("PROP_") || message === "UNKNOWN_PROP" || message.includes("LOCKED") || message.includes("COLLISION") ? 400 :
-      500;
     console.error("[EverVale]", message);
-    json(res, status, { accepted: false, error: message });
+    json(res, statusForError(message), { accepted: false, error: message });
   }
 });
+
+let shutdownPromise: Promise<void> | null = null;
+
+async function closeServer(serverToClose: Server): Promise<void> {
+  await new Promise<void>((resolve) => {
+    serverToClose.close(() => resolve());
+  });
+}
+
+function requestShutdown(signal: NodeJS.Signals): void {
+  if (shutdownPromise) return;
+
+  shutdownPromise = (async () => {
+    console.info(`[EverVale] shutdown signal=${signal}`);
+    await closeServer(server);
+    await worldRepository.close?.();
+    console.info("[EverVale] shutdown complete");
+  })();
+
+  void shutdownPromise.catch((error) => {
+    console.error(
+      "[EverVale] shutdown failed",
+      error instanceof Error ? error.message : error,
+    );
+    process.exitCode = 1;
+  });
+}
+
+process.once("SIGINT", () => requestShutdown("SIGINT"));
+process.once("SIGTERM", () => requestShutdown("SIGTERM"));
 
 server.listen(PORT, () => {
   console.info(`[EverVale] server listening on http://localhost:${PORT}`);
