@@ -1,6 +1,6 @@
 # 79 — M1.8 Persisted State Integrity & Recovery
 
-Status: **PASS — PR #10 FULL CI GREEN**
+Status: **CODE/RUNTIME PASS — MERGE BLOCKED BY EXISTING VISUAL STRESS GATE**
 
 Date: 2026-09-21
 
@@ -279,4 +279,6 @@ GitHub Actions result:
 
 One earlier browser attempt on the same visual base hit the existing stress-frame edge (30 then 28 vs required >30). No threshold was changed. After the JSON durability ordering fix, the unchanged visual/performance gate passed in full.
 
-**M1.8 PERSISTED STATE INTEGRITY & RECOVERY: PASS**
+**M1.8 PERSISTED STATE INTEGRITY & RECOVERY: CODE/RUNTIME PASS**
+
+Merge remains blocked because the current visual stress gate is borderline on the visual HEAD: repeated runs produced frame deltas of 30 and 28 against the unchanged requirement `>30`. The M1.8 runtime/browser flow itself passed. The threshold was not changed and no graphics files were modified.
