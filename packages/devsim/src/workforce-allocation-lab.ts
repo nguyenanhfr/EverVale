@@ -10,6 +10,7 @@ import { compileWorkforceProfile } from "./workforce-policy.js";
 export type AllocationAlgorithm =
   | "current_flat_priority"
   | "one_floor_then_priority"
+  | "category_floor_then_priority"
   | "tiered_category_round_robin";
 
 interface DemandUnit {
@@ -182,6 +183,46 @@ function allocateOneFloorThenPriority(
   return assignment;
 }
 
+function allocateCategoryFloorThenPriority(
+  workforce: number,
+  units: DemandUnit[],
+): Record<string, number> {
+  const assignment = initAssignment(units);
+  let available = workforce;
+  const active = units.filter((unit) => unit.level !== "paused");
+  const categories = [...new Set(active.map((unit) => unit.category))]
+    .sort((a, b) => categoryOrder(a) - categoryOrder(b) || a.localeCompare(b));
+
+  for (const category of categories) {
+    if (available <= 0) break;
+    const candidates = active
+      .filter((unit) => unit.category === category)
+      .sort((a, b) => b.effectivePriority - a.effectivePriority || a.id.localeCompare(b.id));
+    const target = candidates[0];
+    if (!target) continue;
+    assignment[target.id] = 1;
+    available -= 1;
+  }
+
+  const ordered = [...active].sort(
+    (a, b) =>
+      b.effectivePriority - a.effectivePriority ||
+      categoryOrder(a.category) - categoryOrder(b.category) ||
+      a.id.localeCompare(b.id),
+  );
+
+  for (const unit of ordered) {
+    if (available <= 0) break;
+    const missing = unit.demand - (assignment[unit.id] ?? 0);
+    if (missing <= 0) continue;
+    const count = Math.min(available, missing);
+    assignment[unit.id]! += count;
+    available -= count;
+  }
+
+  return assignment;
+}
+
 function allocateTieredCategoryRoundRobin(
   workforce: number,
   units: DemandUnit[],
@@ -260,7 +301,9 @@ function calculateResult(
       ? allocateCurrentFlat(workforce, units)
       : algorithm === "one_floor_then_priority"
         ? allocateOneFloorThenPriority(workforce, units)
-        : allocateTieredCategoryRoundRobin(workforce, units);
+        : algorithm === "category_floor_then_priority"
+          ? allocateCategoryFloorThenPriority(workforce, units)
+          : allocateTieredCategoryRoundRobin(workforce, units);
 
   const byCategory: Record<string, number> = {};
   const demandByCategory: Record<string, number> = {};
@@ -399,9 +442,9 @@ export function runWorkforceAllocatorLab(): WorkforceAllocatorLabReport {
   }
 
   const recommendation: WorkforceAllocatorLabReport["recommendation"] = {
-    algorithm: "tiered_category_round_robin",
+    algorithm: "category_floor_then_priority",
     reason:
-      "It treats semantic category priority as the primary decision, shares equal-priority Workforce across categories instead of letting building order monopolize it, supports true PAUSED exclusion in the candidate model, and avoids the per-building floor bias where adding more buildings grants a category extra guaranteed workers.",
+      "It gives each active category a minimum foothold without granting one guaranteed worker per building, then lets semantic priority decide the remaining scarce Workforce. This preserves a viable Balanced baseline while keeping HIGH meaningful and supports true PAUSED exclusion in the candidate model.",
   };
 
   return {
