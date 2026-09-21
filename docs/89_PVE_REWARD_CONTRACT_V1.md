@@ -518,7 +518,7 @@ If any answer is unclear, final reward values are not locked.
 
 # 22. Validated bracket-0 candidate
 
-Measured evidence is recorded in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md`.
+Measured evidence is now merged on `main` in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md`.
 
 Candidate base:
 
