@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 const SERVER = "http://127.0.0.1:2567";
-const HANDLE = "e2e-builder";
+const HANDLE = `e2e-${randomUUID().slice(0, 8)}`;
 
 async function apiWorld(request: Parameters<typeof test>[0] extends never ? never : any, ownerId: string) {
   const response = await request.get(`${SERVER}/api/world`, {
@@ -85,7 +86,7 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   await page.getByRole("button", { name: "Select" }).click();
 
   const ownerId = await page.evaluate(() => localStorage.getItem("evervale.owner"));
-  expect(ownerId).toBe("dev:e2e-builder");
+  expect(ownerId).toBe(`dev:${HANDLE}`);
 
   // Decor catalog is a real editor lane with 1m snap.
   await page.getByRole("button", { name: "Decor", exact: true }).click();
