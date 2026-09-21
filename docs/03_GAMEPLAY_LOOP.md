@@ -1,5 +1,7 @@
 # 03 — Core Gameplay Loop
 
+> **Leadership override — 2026-09-21:** the loop below remains the operational skeleton, but it is not sufficient as the strategic core. EverVale must require meaningful path choice and opportunity cost; ordinary players must not efficiently maximize Economy, Tech, Civic/Growth and Defense simultaneously. Canonical direction and open debt: `docs/83_CORE_GAMEPLAY_STRATEGIC_PATHS_AND_DEBT.md`.
+
 ## Primary loop
 
 `Plan → Build → Staff Automatically → Observe → Improve → Defend → Recover → Expand`
