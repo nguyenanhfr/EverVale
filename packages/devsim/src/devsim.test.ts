@@ -4,8 +4,9 @@ import { buildAuthorityDriftReport, buildRoiReport, runAuthorityTamperProbe } fr
 import { runScenario } from "./scenarios.js";
 import { SimHarness } from "./core.js";
 import { runStrategicPathPack } from "./strategic-paths.js";
-import { compileWorkforceProfile, runWorkforcePolicyPack } from "./workforce-policy.js";
+import { compileWorkforceProfile, runWorkforceCandidatePolicyPack, runWorkforcePolicyPack } from "./workforce-policy.js";
 import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
+import { runDefenseReadinessLab } from "./defense-readiness.js";
 
 test("healthy planner spends authoritative Money and queues real construction", async () => {
   const report = await runScenario({
@@ -208,4 +209,34 @@ test("workforce allocator lab compares category-aware candidates against flat pr
     report.algorithmSummary.tiered_category_round_robin.paused.byCategory.industry ?? 0,
     0,
   );
+});
+
+
+test("category-floor allocator candidate keeps Balanced categories alive without per-building floors", () => {
+  const report = runWorkforceAllocatorLab();
+  const candidate = report.algorithmSummary.category_floor_then_priority;
+
+  assert.ok(candidate);
+  assert.equal(candidate.fail, 0);
+  assert.ok((candidate.balanced.byCategory.education ?? 0) > 0);
+  assert.ok((candidate.balanced.byCategory.defense ?? 0) > 0);
+  assert.equal(candidate.paused.byCategory.industry ?? 0, 0);
+});
+
+test("Defense Readiness lab binds Guard deployment to staffed source capacity", async () => {
+  const report = await runDefenseReadinessLab(71);
+  console.log("DEVSIM_DEFENSE_READINESS_LAB", JSON.stringify(report));
+
+  assert.equal(report.gates.find((gate) => gate.id === "DG1_ZERO_STAFF_NO_GUARDS")?.pass, true);
+  assert.equal(report.gates.find((gate) => gate.id === "DG2_HALF_STAFF_PROPORTIONAL")?.pass, true);
+  assert.equal(report.gates.find((gate) => gate.id === "DG3_FULL_STAFF_FULL_CAPACITY")?.pass, true);
+});
+
+test("candidate W0-W7 uses category-floor allocator and staffed-source readiness in the real engine", async () => {
+  const report = await runWorkforceCandidatePolicyPack({ hours: 5, seed: 72 });
+  console.log("DEVSIM_WORKFORCE_CANDIDATE", JSON.stringify(report));
+
+  assert.ok(report.modelRevision.includes("category-floor"));
+  assert.equal(report.gates.find((gate) => gate.id === "WG5_PAUSED_MEANS_ZERO")?.pass, true);
+  assert.equal(report.gates.find((gate) => gate.id === "WG7_OMNI_HIGH_REJECTED")?.pass, true);
 });
