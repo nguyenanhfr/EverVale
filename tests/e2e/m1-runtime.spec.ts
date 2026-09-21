@@ -77,8 +77,7 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   expect(citizenRoles).toContain("utility_technician");
   const citizenVisualSources =
     (await worldView.getAttribute("data-citizen-visual-sources"))?.split(",").filter(Boolean) ?? [];
-  expect(citizenVisualSources).toContain("generated_factory");
-  expect(citizenVisualSources).toContain("procedural");
+  expect(citizenVisualSources).toEqual(["generated_factory"]);
 
   await expect.poll(async () => Number(await worldView.getAttribute("data-disconnected-routes"))).toBe(0);
   await expect(page.getByTestId("routing-status")).toContainText("12/12");
