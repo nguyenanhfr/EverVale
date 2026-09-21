@@ -543,16 +543,63 @@ export function WorldView({
             building.constructionState === "BUILDING"
               ? constructionVisualState(building).stage
               : "COMPLETE";
-          return `${building.id}:${building.constructionState}:${stage}:${building.damageState}`;
+          return [
+            building.id,
+            building.definitionId,
+            building.position.x,
+            building.position.z,
+            building.rotationY,
+            building.constructionState,
+            stage,
+            building.damageState,
+          ].join(":");
         })
         .join("|");
       const blockerState = (current.blockers ?? [])
-        .map((blocker) => `${blocker.id}:${blocker.state}`)
+        .map((blocker) =>
+          [
+            blocker.id,
+            blocker.definitionId,
+            blocker.position.x,
+            blocker.position.z,
+            blocker.state,
+          ].join(":")
+        )
+        .join("|");
+      const roadState = (current.roads ?? [])
+        .map((road) =>
+          [
+            road.id,
+            road.type,
+            road.from.x,
+            road.from.z,
+            road.to.x,
+            road.to.z,
+          ].join(":")
+        )
+        .join("|");
+      const propState = (current.props ?? [])
+        .map((prop) =>
+          [
+            prop.id,
+            prop.definitionId,
+            prop.position.x,
+            prop.position.z,
+            prop.rotationY,
+          ].join(":")
+        )
         .join("|");
       const combatState = current.combat
         ? `${current.combat.id}:${current.combat.status}:${current.combat.outcome ?? ""}:${current.combat.actors
             .filter((actor) => actor.hp > 0)
-            .map((actor) => actor.id)
+            .map((actor) =>
+              [
+                actor.id,
+                Math.ceil(actor.hp),
+                actor.position.x,
+                actor.position.z,
+              ].join(":")
+            )
             .join(",")}`
         : "none";
       const population = Math.min(
@@ -560,11 +607,12 @@ export function WorldView({
         visualPopulationRef.current ?? current.society.population,
       );
       return [
-        current.revision,
         selectedPropIdRef.current ?? "",
         population,
         buildingState,
         blockerState,
+        roadState,
+        propState,
         combatState,
       ].join("::");
     };
