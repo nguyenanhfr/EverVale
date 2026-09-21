@@ -146,6 +146,11 @@ export function currentMoneyFlow(
   };
 }
 
+export interface SimHarnessOptions {
+  seed?: number;
+  buildingOverrides?: Record<string, Partial<SimulationDefinitions["buildings"][string]>>;
+}
+
 export class SimHarness {
   readonly definitions: SimulationDefinitions;
   readonly repository = new MemoryWorldRepository();
@@ -156,15 +161,25 @@ export class SimHarness {
 
   private readonly placementCandidates: Array<{ x: number; z: number }>;
 
-  constructor(readonly seed = 1) {
+  readonly seed: number;
+
+  constructor(options: SimHarnessOptions = {}) {
     const gameData = loadGameData();
+    this.seed = options.seed ?? 1;
     this.definitions = gameData.definitions;
-    this.ownerId = `devsim-owner-${seed}`;
+
+    for (const [buildingId, override] of Object.entries(options.buildingOverrides ?? {})) {
+      const existing = this.definitions.buildings[buildingId];
+      if (!existing) throw new Error(`UNKNOWN_BUILDING_OVERRIDE:${buildingId}`);
+      this.definitions.buildings[buildingId] = { ...existing, ...override, id: existing.id };
+    }
+
+    this.ownerId = `devsim-owner-${this.seed}`;
     this.clock = new SimClock(new Date("2026-09-21T12:00:00.000Z"));
     this.service = new WorldService({
       repository: this.repository,
       definitions: this.definitions,
-      ids: new DeterministicIds(seed),
+      ids: new DeterministicIds(this.seed),
       clock: this.clock,
     });
 
