@@ -478,3 +478,37 @@ export function loadDefenseReadinessCandidate(): DefenseReadinessCandidate {
     "data/devsim/v0.1/defense_readiness.yaml",
   );
 }
+
+
+export interface PveRewardCandidate {
+  version: string;
+  status: string;
+  model_revision: string;
+  brackets: Record<number, {
+    money_base: number;
+    tech_base: number;
+    varum_base: number;
+  }>;
+  outcome_multipliers: Record<"CLEAN" | "COSTLY" | "BREACH", number>;
+  anti_farm: {
+    equivalent_encounter_multipliers: number[];
+    test_wave_reward_enabled: boolean;
+  };
+  validation: {
+    bracket_zero: {
+      costly_net_max: number;
+      breach_net_max: number;
+      clean_money_max_fraction_of_two_hour_industry_income: number;
+      pve_tech_max_fraction_of_two_hour_full_school_output: number;
+    };
+    repeated_equivalent_wins: {
+      max_four_encounter_money_fraction_of_eight_hour_industry_income: number;
+    };
+  };
+}
+
+export function loadPveRewardCandidate(): PveRewardCandidate {
+  return readYaml<PveRewardCandidate>(
+    "data/devsim/v0.1/pve_reward_candidate.yaml",
+  );
+}
