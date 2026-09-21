@@ -1,6 +1,6 @@
 # 77 — M1.6 Runtime Boundary & Process Hardening
 
-Status: **IMPLEMENTED ON ENGINEERING BRANCH / CI REQUIRED**
+Status: **PASS — PR #3 FULL CI GREEN**
 
 Date: 2026-09-21
 
@@ -200,18 +200,21 @@ The M1.5 lease decision remains canonical.
 
 A real exclusive world lease is mandatory before any second process independently advances world time.
 
-## Exit condition
+## Exit result
 
-M1.6 is code-complete only when all relevant gates pass on this branch:
+PR #3 code-gate head:
 
-- TypeScript typecheck
-- unit tests
-- production build
-- Playwright browser/API E2E
-- PostgreSQL migration first run
-- PostgreSQL migration safe rerun
-- PostgreSQL persistence integration
+`08d42dfe6f07dc6a5ef4976ad3324bd66d5ba35d`
 
-Until those CI results exist, status remains:
+Validated on GitHub Actions:
 
-**IMPLEMENTED ON ENGINEERING BRANCH / CI REQUIRED**
+- TypeScript typecheck: PASS
+- unit tests: PASS
+- production build: PASS
+- Playwright browser/API E2E: PASS
+- PostgreSQL migration first run: PASS
+- PostgreSQL migration safe rerun: PASS
+- PostgreSQL persistence integration: PASS
+- canonical content / 1000-seed / long-run / spatial-combat preflight: PASS
+
+**M1.6 RUNTIME BOUNDARY & PROCESS HARDENING: PASS**
