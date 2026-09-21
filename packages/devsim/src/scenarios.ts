@@ -3,6 +3,7 @@ import type { BuildingDefinition } from "@evervale/domain/world.types";
 import type { WorkforceAllocator } from "@evervale/domain/advance-world";
 import {
   SimHarness,
+  type DefenseReadinessOverlay,
   type SimActionResult,
   type SimHarnessOptions,
   type SimSample,
@@ -337,6 +338,7 @@ export interface ScenarioRunOptions {
   stepSeconds?: number;
   buildingOverrides?: Record<string, Partial<BuildingDefinition>>;
   workforceAllocator?: WorkforceAllocator;
+  defenseReadiness?: DefenseReadinessOverlay;
   buildPlan?: string[];
   policyTransitions?: ScenarioPolicyTransition[];
   resourceTransitions?: ScenarioResourceTransition[];
