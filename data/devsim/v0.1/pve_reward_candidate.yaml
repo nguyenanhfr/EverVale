@@ -1,0 +1,35 @@
+version: "0.1"
+status: "DEVSIM_CANDIDATE_ONLY"
+model_revision: "pve-reward-v1"
+
+brackets:
+  0:
+    money_base: 120
+    tech_base: 2
+    varum_base: 0
+  1:
+    money_base: 180
+    tech_base: 3
+    varum_base: 0
+  2:
+    money_base: 260
+    tech_base: 4
+    varum_base: 1
+
+outcome_multipliers:
+  CLEAN: 1.0
+  COSTLY: 0.35
+  BREACH: 0.10
+
+anti_farm:
+  equivalent_encounter_multipliers: [1.0, 0.35, 0.10, 0.0]
+  test_wave_reward_enabled: false
+
+validation:
+  bracket_zero:
+    costly_net_max: 10
+    breach_net_max: -1
+    clean_money_max_fraction_of_two_hour_industry_income: 0.75
+    pve_tech_max_fraction_of_two_hour_full_school_output: 0.20
+  repeated_equivalent_wins:
+    max_four_encounter_money_fraction_of_eight_hour_industry_income: 0.35
