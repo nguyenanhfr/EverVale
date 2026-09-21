@@ -1,0 +1,330 @@
+import { randomUUID } from "node:crypto";
+import { WorldService } from "@evervale/application/world-service";
+import type {
+  AcceptedCommandContext,
+  AcceptedCommandReceipt,
+  Clock,
+  IdGenerator,
+  WorldRepository,
+} from "@evervale/application/ports";
+import { loadGameData } from "@evervale/balance-data";
+import type { SimulationDefinitions, WorldState } from "@evervale/domain/world.types";
+import { parseWorldCommand } from "@evervale/protocol/world-command-runtime";
+import type { WorldCommand } from "@evervale/protocol/world";
+
+export class MemoryWorldRepository implements WorldRepository {
+  world: WorldState | null = null;
+  readonly receipts = new Map<string, AcceptedCommandReceipt>();
+
+  async findByOwner(ownerId: string): Promise<WorldState | null> {
+    return this.world?.ownerId === ownerId ? this.world : null;
+  }
+
+  async findById(worldId: string): Promise<WorldState | null> {
+    return this.world?.worldId === worldId ? this.world : null;
+  }
+
+  async findAcceptedCommand(commandId: string): Promise<AcceptedCommandReceipt | null> {
+    return this.receipts.get(commandId) ?? null;
+  }
+
+  async create(world: WorldState): Promise<void> {
+    if (this.world) throw new Error("WORLD_OWNER_EXISTS");
+    this.world = world;
+  }
+
+  async save(
+    world: WorldState,
+    previousRevision: number,
+    acceptedCommand?: AcceptedCommandContext,
+  ): Promise<void> {
+    if (!this.world || this.world.revision !== previousRevision) {
+      throw new Error("REVISION_CONFLICT");
+    }
+    this.world = world;
+    if (acceptedCommand) {
+      this.receipts.set(acceptedCommand.commandId, {
+        ...acceptedCommand,
+        worldId: world.worldId,
+        world,
+      });
+    }
+  }
+
+  replaceForFixture(world: WorldState): void {
+    this.world = world;
+  }
+}
+
+export class SimClock implements Clock {
+  constructor(private current: Date) {}
+
+  now(): Date {
+    return new Date(this.current);
+  }
+
+  advance(seconds: number): void {
+    this.current = new Date(this.current.getTime() + seconds * 1000);
+  }
+}
+
+export class DeterministicIds implements IdGenerator {
+  private counter = 0;
+
+  constructor(private readonly seed: number) {}
+
+  next(prefix: string): string {
+    this.counter += 1;
+    return `${prefix}-sim-${this.seed}-${this.counter}`;
+  }
+}
+
+export interface MoneyFlow {
+  grossIncomePerCycle: number;
+  upkeepPerCycle: number;
+  netPerCycle: number;
+}
+
+export interface SimActionResult {
+  accepted: boolean;
+  type: WorldCommand["type"];
+  atSeconds: number;
+  definitionId?: string;
+  moneyDelta: number;
+  varumDelta: number;
+  error?: string;
+}
+
+export interface SimSample {
+  atSeconds: number;
+  revision: number;
+  money: number;
+  moneyCap: number;
+  power: number;
+  powerCap: number;
+  water: number;
+  waterCap: number;
+  varum: number;
+  varumCap: number;
+  techPoints: number;
+  techTier: number;
+  population: number;
+  housing: number;
+  happiness: number;
+  workforce: number;
+  assignedWorkers: number;
+  activeConstruction: number;
+  completedBuildings: number;
+  moneyFlow: MoneyFlow;
+}
+
+export function currentMoneyFlow(
+  world: WorldState,
+  definitions: SimulationDefinitions,
+): MoneyFlow {
+  let grossIncomePerCycle = 0;
+  let upkeepPerCycle = 0;
+
+  for (const building of world.buildings) {
+    const def = definitions.buildings[building.definitionId];
+    if (
+      !def ||
+      building.constructionState !== "COMPLETE" ||
+      building.damageState === "DISABLED"
+    ) {
+      continue;
+    }
+
+    grossIncomePerCycle += def.moneyPerWorker * building.workersAssigned;
+    upkeepPerCycle += def.upkeep;
+  }
+
+  return {
+    grossIncomePerCycle,
+    upkeepPerCycle,
+    netPerCycle: grossIncomePerCycle - upkeepPerCycle,
+  };
+}
+
+export class SimHarness {
+  readonly definitions: SimulationDefinitions;
+  readonly repository = new MemoryWorldRepository();
+  readonly clock: SimClock;
+  readonly service: WorldService;
+  readonly ownerId: string;
+  readonly actions: SimActionResult[] = [];
+
+  private readonly placementCandidates: Array<{ x: number; z: number }>;
+
+  constructor(readonly seed = 1) {
+    const gameData = loadGameData();
+    this.definitions = gameData.definitions;
+    this.ownerId = `devsim-owner-${seed}`;
+    this.clock = new SimClock(new Date("2026-09-21T12:00:00.000Z"));
+    this.service = new WorldService({
+      repository: this.repository,
+      definitions: this.definitions,
+      ids: new DeterministicIds(seed),
+      clock: this.clock,
+    });
+
+    this.placementCandidates = this.makePlacementCandidates();
+  }
+
+  async initialize(): Promise<WorldState> {
+    return this.service.getOrCreate(this.ownerId);
+  }
+
+  async world(): Promise<WorldState> {
+    return this.service.getOrCreate(this.ownerId);
+  }
+
+  async advance(seconds: number): Promise<WorldState> {
+    this.clock.advance(seconds);
+    return this.service.getOrCreate(this.ownerId);
+  }
+
+  sample(world: WorldState): SimSample {
+    return {
+      atSeconds: world.simulationSeconds,
+      revision: world.revision,
+      money: world.resources.money,
+      moneyCap: world.resources.moneyCap,
+      power: world.resources.power,
+      powerCap: world.resources.powerCap,
+      water: world.resources.water,
+      waterCap: world.resources.waterCap,
+      varum: world.resources.varum,
+      varumCap: world.resources.varumCap,
+      techPoints: world.resources.techPoints,
+      techTier: world.resources.techTier,
+      population: world.society.population,
+      housing: world.society.housingCapacity,
+      happiness: world.society.happiness,
+      workforce: world.society.workforce,
+      assignedWorkers: world.society.assignedWorkers,
+      activeConstruction: world.buildings.filter((item) => item.constructionState === "BUILDING").length,
+      completedBuildings: world.buildings.filter((item) => item.constructionState === "COMPLETE").length,
+      moneyFlow: currentMoneyFlow(world, this.definitions),
+    };
+  }
+
+  async placeBuilding(definitionId: string): Promise<SimActionResult> {
+    const before = await this.world();
+
+    for (const point of this.placementCandidates) {
+      const raw = {
+        type: "PLACE_BUILDING",
+        commandId: randomUUID(),
+        expectedRevision: before.revision,
+        payload: {
+          definitionId,
+          x: point.x,
+          z: point.z,
+        },
+      };
+
+      const command = parseWorldCommand(raw);
+      try {
+        const after = await this.service.command(this.ownerId, command);
+        const result: SimActionResult = {
+          accepted: true,
+          type: command.type,
+          atSeconds: after.simulationSeconds,
+          definitionId,
+          moneyDelta: after.resources.money - before.resources.money,
+          varumDelta: after.resources.varum - before.resources.varum,
+        };
+        this.actions.push(result);
+        return result;
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+        if (
+          code === "PLACEMENT_COLLISION" ||
+          code === "PLACEMENT_BLOCKED" ||
+          code === "NO_ROAD_ACCESS"
+        ) {
+          continue;
+        }
+
+        const result: SimActionResult = {
+          accepted: false,
+          type: command.type,
+          atSeconds: before.simulationSeconds,
+          definitionId,
+          moneyDelta: 0,
+          varumDelta: 0,
+          error: code,
+        };
+        this.actions.push(result);
+        return result;
+      }
+    }
+
+    const result: SimActionResult = {
+      accepted: false,
+      type: "PLACE_BUILDING",
+      atSeconds: before.simulationSeconds,
+      definitionId,
+      moneyDelta: 0,
+      varumDelta: 0,
+      error: "NO_VALID_PLACEMENT",
+    };
+    this.actions.push(result);
+    return result;
+  }
+
+  async triggerWave(): Promise<SimActionResult> {
+    const before = await this.world();
+    const command = parseWorldCommand({
+      type: "TRIGGER_TEST_WAVE",
+      commandId: randomUUID(),
+      expectedRevision: before.revision,
+      payload: {},
+    });
+
+    try {
+      const after = await this.service.command(this.ownerId, command);
+      const result: SimActionResult = {
+        accepted: true,
+        type: command.type,
+        atSeconds: after.simulationSeconds,
+        moneyDelta: after.resources.money - before.resources.money,
+        varumDelta: after.resources.varum - before.resources.varum,
+      };
+      this.actions.push(result);
+      return result;
+    } catch (error) {
+      const result: SimActionResult = {
+        accepted: false,
+        type: command.type,
+        atSeconds: before.simulationSeconds,
+        moneyDelta: 0,
+        varumDelta: 0,
+        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+      };
+      this.actions.push(result);
+      return result;
+    }
+  }
+
+  private makePlacementCandidates(): Array<{ x: number; z: number }> {
+    const values: Array<{ x: number; z: number }> = [];
+    for (let z = -16; z <= 16; z += 2) {
+      for (let x = -22; x <= 22; x += 2) {
+        const nearHorizontalRoad = Math.abs(z - 2) <= 9;
+        const nearVerticalRoad = Math.abs(x) <= 9;
+        if (nearHorizontalRoad || nearVerticalRoad) {
+          values.push({ x, z });
+        }
+      }
+    }
+
+    values.sort((a, b) => {
+      const da = Math.hypot(a.x, a.z);
+      const db = Math.hypot(b.x, b.z);
+      return da - db || a.z - b.z || a.x - b.x;
+    });
+    return values;
+  }
+}
