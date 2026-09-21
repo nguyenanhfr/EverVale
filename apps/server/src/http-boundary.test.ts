@@ -98,5 +98,9 @@ test("maps public API errors to stable HTTP statuses", () => {
   assert.equal(statusForError("INVALID_JSON"), 400);
   assert.equal(statusForError("REQUEST_TOO_LARGE"), 413);
   assert.equal(statusForError("UNSUPPORTED_MEDIA_TYPE"), 415);
+  assert.equal(statusForError("WORLD_STATE_CORRUPT"), 503);
+  assert.equal(statusForError("WORLD_STATE_CHECKSUM_MISMATCH"), 503);
+  assert.equal(statusForError("WORLD_SCHEMA_UNSUPPORTED"), 503);
+  assert.equal(statusForError("WORLD_COMMAND_RECEIPT_CORRUPT"), 503);
   assert.equal(statusForError("SOMETHING_UNEXPECTED"), 500);
 });
