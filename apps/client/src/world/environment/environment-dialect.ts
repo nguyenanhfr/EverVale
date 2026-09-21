@@ -2,6 +2,16 @@ import { resolveWorldVisualDialect, type VisualDialectId } from "../visual-ident
 
 export interface EnvironmentDialectPalette {
   id: VisualDialectId;
+  composition: {
+    treeCount: number;
+    broadleafWeight: number;
+    coniferWeight: number;
+    birchWeight: number;
+    innerGroveBias: number;
+    flowerCount: number;
+    grassCount: number;
+    rockCount: number;
+  };
   ground: number;
   skirt: number;
   moundA: number;
@@ -21,6 +31,16 @@ export interface EnvironmentDialectPalette {
 const palettes: Record<VisualDialectId, EnvironmentDialectPalette> = {
   hearthstone: {
     id: "hearthstone",
+    composition: {
+      treeCount: 28,
+      broadleafWeight: 0.55,
+      coniferWeight: 0.3,
+      birchWeight: 0.15,
+      innerGroveBias: 0.34,
+      flowerCount: 52,
+      grassCount: 132,
+      rockCount: 20,
+    },
     ground: 0x809d70,
     skirt: 0x5e7457,
     moundA: 0x667f60,
@@ -38,6 +58,16 @@ const palettes: Record<VisualDialectId, EnvironmentDialectPalette> = {
   },
   willowbrook: {
     id: "willowbrook",
+    composition: {
+      treeCount: 32,
+      broadleafWeight: 0.68,
+      coniferWeight: 0.12,
+      birchWeight: 0.2,
+      innerGroveBias: 0.46,
+      flowerCount: 64,
+      grassCount: 148,
+      rockCount: 16,
+    },
     ground: 0x789777,
     skirt: 0x536b59,
     moundA: 0x5f7d65,
@@ -55,6 +85,16 @@ const palettes: Record<VisualDialectId, EnvironmentDialectPalette> = {
   },
   amberfield: {
     id: "amberfield",
+    composition: {
+      treeCount: 23,
+      broadleafWeight: 0.5,
+      coniferWeight: 0.22,
+      birchWeight: 0.28,
+      innerGroveBias: 0.22,
+      flowerCount: 34,
+      grassCount: 104,
+      rockCount: 28,
+    },
     ground: 0x8e9c70,
     skirt: 0x687054,
     moundA: 0x727f5e,
@@ -72,6 +112,16 @@ const palettes: Record<VisualDialectId, EnvironmentDialectPalette> = {
   },
   bluebell: {
     id: "bluebell",
+    composition: {
+      treeCount: 30,
+      broadleafWeight: 0.42,
+      coniferWeight: 0.4,
+      birchWeight: 0.18,
+      innerGroveBias: 0.38,
+      flowerCount: 46,
+      grassCount: 126,
+      rockCount: 24,
+    },
     ground: 0x7e9a86,
     skirt: 0x5b7064,
     moundA: 0x657f72,
