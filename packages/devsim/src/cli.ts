@@ -13,6 +13,7 @@ import {
 import type { BuildingDefinition } from "@evervale/domain/world.types";
 import { runStrategicPathPack } from "./strategic-paths.js";
 import { runWorkforcePolicyPack } from "./workforce-policy.js";
+import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
 
 function flag(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -151,6 +152,11 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "allocator-lab") {
+    console.log(JSON.stringify(runWorkforceAllocatorLab(), null, 2));
+    return;
+  }
+
   if (command === "roi") {
     console.log(JSON.stringify(await buildRoiReport(), null, 2));
     return;
@@ -225,6 +231,7 @@ async function main(): Promise<void> {
     "  baseline [--hours 8] [--seed 1]",
     "  paths [--hours 8] [--long-hours 12] [--strong-hours 12] [--seed 1]",
     "  workforce [--hours 8] [--seed 1]",
+    "  allocator-lab",
     "  roi",
     "  graph",
     "  authority-test",
