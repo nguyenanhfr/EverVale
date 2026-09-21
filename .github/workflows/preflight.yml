@@ -21,6 +21,12 @@ jobs:
       - name: Validate canonical content
         run: python tools/validation/validate_content.py
 
+      - name: Validate visual presentation data
+        run: python tools/validation/validate_visual_presentation.py
+
+      - name: Check generated visual identity data
+        run: python tools/validation/generate_visual_identity_data.py --check
+
       - name: Validate 1000 world seeds
         run: python tools/validation/validate_worldgen.py --seeds 1000
 
