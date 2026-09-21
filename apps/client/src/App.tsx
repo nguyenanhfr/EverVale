@@ -169,6 +169,24 @@ export default function App() {
     [view],
   );
 
+  const workforceByCategory = useMemo(() => {
+    if (!view) return [];
+    const totals = new Map<string, { assigned: number; demand: number }>();
+    for (const building of view.world.buildings) {
+      if (building.constructionState !== "COMPLETE") continue;
+      const meta = view.buildCatalog.find((item) => item.id === building.definitionId);
+      const category = meta?.jobCategory;
+      if (!category || !meta || meta.workers <= 0) continue;
+      const current = totals.get(category) ?? { assigned: 0, demand: 0 };
+      current.assigned += building.workersAssigned;
+      current.demand += meta.workers;
+      totals.set(category, current);
+    }
+    return [...totals.entries()]
+      .map(([category, value]) => ({ category, ...value }))
+      .sort((a, b) => b.assigned - a.assigned || a.category.localeCompare(b.category));
+  }, [view]);
+
   const activePreviewProp = mode === "MOVE_PROP" ? movingPropMeta : selectedProp;
   const activePreviewRotation =
     mode === "MOVE_PROP" ? (movingPropInstance?.rotationY ?? 0) : propRotation;
@@ -586,6 +604,22 @@ export default function App() {
           <div data-testid="prop-count"><small>Props</small><b>{w.props.length}</b></div>
           <div><small>Beauty</small><b>{w.society.beauty.toFixed(2)}</b></div>
         </div>
+
+        {workforceByCategory.length > 0 && (
+          <div className="workforce-allocation" data-testid="workforce-allocation">
+            <strong>Workforce allocation</strong>
+            {workforceByCategory.map((row) => {
+              const ratio = row.demand > 0 ? Math.min(1, row.assigned / row.demand) : 0;
+              return (
+                <div key={row.category} className="workforce-row">
+                  <span>{row.category.replaceAll("_", " ")}</span>
+                  <div className="workforce-meter"><i style={{ width: `${Math.round(ratio * 100)}%` }} /></div>
+                  <b>{row.assigned}/{row.demand}</b>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="routing-card" data-testid="routing-status">
           <span>Road routing</span>
