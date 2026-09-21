@@ -379,29 +379,36 @@ export function validateSchemaVersion(value: unknown): void {
 
 
 export function validateAcceptedCommandReceipt(value: unknown): AcceptedCommandReceipt {
-  const source = record(value);
-  const world = validateWorldState(source.world);
-  const commandId = requiredString(source, "commandId");
-  const worldId = requiredString(source, "worldId");
-  const ownerId = requiredString(source, "ownerId");
-  const expectedRevision = nonNegativeInteger(source, "expectedRevision");
-  const commandType = requiredString(source, "commandType");
-  const fingerprint = requiredString(source, "fingerprint");
+  try {
+    const source = record(value);
+    const world = validateWorldState(source.world);
+    const commandId = requiredString(source, "commandId");
+    const worldId = requiredString(source, "worldId");
+    const ownerId = requiredString(source, "ownerId");
+    const expectedRevision = nonNegativeInteger(source, "expectedRevision");
+    const commandType = requiredString(source, "commandType");
+    const fingerprint = requiredString(source, "fingerprint");
 
-  if (world.worldId !== worldId || world.ownerId !== ownerId) {
-    return fail("WORLD_COMMAND_RECEIPT_CORRUPT");
-  }
-  if (world.revision < expectedRevision + 1) {
-    return fail("WORLD_COMMAND_RECEIPT_CORRUPT");
-  }
+    if (world.worldId !== worldId || world.ownerId !== ownerId) {
+      return fail("WORLD_COMMAND_RECEIPT_CORRUPT");
+    }
+    if (world.revision < expectedRevision + 1) {
+      return fail("WORLD_COMMAND_RECEIPT_CORRUPT");
+    }
 
-  return {
-    commandId,
-    worldId,
-    ownerId,
-    expectedRevision,
-    commandType,
-    fingerprint,
-    world,
-  };
+    return {
+      commandId,
+      worldId,
+      ownerId,
+      expectedRevision,
+      commandType,
+      fingerprint,
+      world,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === "WORLD_COMMAND_RECEIPT_CORRUPT") {
+      throw error;
+    }
+    throw new Error("WORLD_COMMAND_RECEIPT_CORRUPT");
+  }
 }
