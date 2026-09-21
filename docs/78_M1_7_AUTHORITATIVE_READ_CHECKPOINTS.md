@@ -1,6 +1,6 @@
 # 78 — M1.7 Authoritative Read Checkpoints
 
-Status: **IMPLEMENTED ON ENGINEERING BRANCH / CI REQUIRED**
+Status: **PASS — PR #5 FULL CI GREEN**
 
 Date: 2026-09-21
 
@@ -178,15 +178,21 @@ Browser/API E2E additionally verifies:
 - repeated API reads return the same persisted `COMBAT_RESOLVED` event ID
 - revision is stable after the material checkpoint until another mutation
 
-## Exit condition
+## Exit result
 
-M1.7 is PASS only after all relevant gates are green on this branch:
+PR #5 validated code-gate head:
 
-- canonical/preflight validation
-- TypeScript typecheck
-- unit tests
-- production build
-- Playwright browser/API E2E
-- PostgreSQL migration first run
-- PostgreSQL migration safe rerun
-- PostgreSQL persistence integration
+`a867876cb258d54467d7fd60c473dd2c988ab003`
+
+GitHub Actions result:
+
+- canonical/preflight validation: PASS
+- TypeScript typecheck: PASS
+- unit tests: PASS
+- production build: PASS
+- Playwright browser/API E2E: PASS
+- PostgreSQL migration first run: PASS
+- PostgreSQL migration safe rerun: PASS
+- PostgreSQL persistence integration: PASS
+
+**M1.7 AUTHORITATIVE READ CHECKPOINTS: PASS**
