@@ -1,0 +1,21 @@
+{
+  "name": "@evervale/devsim",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@evervale/application": "workspace:*",
+    "@evervale/balance-data": "workspace:*",
+    "@evervale/domain": "workspace:*",
+    "@evervale/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "devsim": "node --import tsx src/cli.ts",
+    "smoke": "node --import tsx src/cli.ts smoke"
+  }
+}
