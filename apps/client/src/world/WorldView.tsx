@@ -35,11 +35,13 @@ interface Props {
   propCatalog: PropCatalogEntryDto[];
   propRotation: number;
   selectedPropId: string | null;
+  selectedBuildingId: string | null;
   movingPropId: string | null;
   roadStart: { x: number; z: number } | null;
   visualPopulationOverride: number | null;
   onGroundClick(position: { x: number; z: number }): void;
   onPropSelect(propId: string | null): void;
+  onBuildingSelect(buildingId: string | null): void;
   onRouting?(routedCitizens: number, disconnectedRoutes: number): void;
   onMetrics: ((metrics: RuntimeMetrics) => void) | undefined;
 }
@@ -260,11 +262,13 @@ export function WorldView({
   propCatalog,
   propRotation,
   selectedPropId,
+  selectedBuildingId,
   movingPropId,
   roadStart,
   visualPopulationOverride,
   onGroundClick,
   onPropSelect,
+  onBuildingSelect,
   onRouting,
   onMetrics,
 }: Props) {
@@ -279,8 +283,10 @@ export function WorldView({
   const propCatalogRef = useRef(propCatalog);
   const propRotationRef = useRef(propRotation);
   const selectedPropIdRef = useRef(selectedPropId);
+  const selectedBuildingIdRef = useRef(selectedBuildingId);
   const movingPropIdRef = useRef(movingPropId);
   const propSelectRef = useRef(onPropSelect);
+  const buildingSelectRef = useRef(onBuildingSelect);
   const routingRef = useRef(onRouting);
   const roadStartRef = useRef(roadStart);
   const visualPopulationRef = useRef(visualPopulationOverride);
@@ -306,8 +312,10 @@ export function WorldView({
   useEffect(() => { propCatalogRef.current = propCatalog; }, [propCatalog]);
   useEffect(() => { propRotationRef.current = propRotation; }, [propRotation]);
   useEffect(() => { selectedPropIdRef.current = selectedPropId; }, [selectedPropId]);
+  useEffect(() => { selectedBuildingIdRef.current = selectedBuildingId; }, [selectedBuildingId]);
   useEffect(() => { movingPropIdRef.current = movingPropId; }, [movingPropId]);
   useEffect(() => { propSelectRef.current = onPropSelect; }, [onPropSelect]);
+  useEffect(() => { buildingSelectRef.current = onBuildingSelect; }, [onBuildingSelect]);
   useEffect(() => { routingRef.current = onRouting; }, [onRouting]);
   useEffect(() => { roadStartRef.current = roadStart; }, [roadStart]);
   useEffect(() => { visualPopulationRef.current = visualPopulationOverride; }, [visualPopulationOverride]);
@@ -423,18 +431,26 @@ export function WorldView({
       return raycaster.intersectObject(ground)[0]?.point ?? null;
     };
 
-    const pickProp = (event: PointerEvent): string | null => {
+    const pickEntity = (
+      event: PointerEvent,
+    ): { propId: string | null; buildingId: string | null } => {
       setMouse(event);
       const hits = raycaster.intersectObjects(dynamic.children, true);
       for (const hit of hits) {
         let object: THREE.Object3D | null = hit.object;
         while (object && object !== dynamic) {
           const propId = object.userData.propId;
-          if (typeof propId === "string") return propId;
+          if (typeof propId === "string") {
+            return { propId, buildingId: null };
+          }
+          const buildingId = object.userData.buildingId;
+          if (typeof buildingId === "string") {
+            return { propId: null, buildingId };
+          }
           object = object.parent;
         }
       }
-      return null;
+      return { propId: null, buildingId: null };
     };
 
     const hidePreviews = () => {
@@ -516,7 +532,9 @@ export function WorldView({
 
     const onPointer = (event: PointerEvent) => {
       if (modeRef.current === "SELECT") {
-        propSelectRef.current(pickProp(event));
+        const picked = pickEntity(event);
+        propSelectRef.current(picked.propId);
+        buildingSelectRef.current(picked.buildingId);
         return;
       }
 
@@ -605,6 +623,7 @@ export function WorldView({
       return [
         current.revision,
         selectedPropIdRef.current ?? "",
+        selectedBuildingIdRef.current ?? "",
         population,
         buildingState,
         blockerState,
@@ -638,11 +657,18 @@ export function WorldView({
           building.constructionState === "BUILDING"
             ? createConstructionObject(building, meta)
             : createBuildingVisual(building, meta);
+        visual.userData.buildingId = building.id;
         visual.traverse((child) => {
+          child.userData.buildingId = building.id;
           const mesh = child as THREE.Mesh;
           if (mesh.userData.buildingGlow) buildingGlowRef.current.push(mesh);
           if (mesh.userData.propWater) propWaterRef.current.push(mesh);
         });
+        if (building.id === selectedBuildingIdRef.current) {
+          const width = (meta?.footprintCellsX ?? 3) * (meta?.gridCellMeters ?? 2);
+          const depth = (meta?.footprintCellsZ ?? 2) * (meta?.gridCellMeters ?? 2);
+          visual.add(makeSelectionRing(width, depth));
+        }
         dynamic.add(visual);
       });
 
