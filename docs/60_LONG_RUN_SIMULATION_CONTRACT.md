@@ -77,3 +77,13 @@ Do not reorder without an ADR because order changes outcomes.
 Stable rates may integrate analytically. Discrete boundaries must be processed chronologically: construction completion, Tech gate, storage cap, utility exhaustion, weather episode, incident start/end, threat event, repair completion.
 
 Reference audit harness: tools/simulation/simulate_long_run.py
+
+## 2026-09-21 re-audit status
+
+This contract remains the required target.
+
+The current `tools/simulation/simulate_long_run.py` is now classified as an **exploratory smoke harness**, not evidence that this contract has been fully satisfied, because it bypasses authoritative purchase/construction progression and duplicates balance constants.
+
+Replacement tooling contract:
+- `docs/81_DEV_BALANCE_SIMULATION_TOOLING_CONTRACT.md`
+- `docs/82_SERVER_AUTHORITATIVE_BALANCE_DATA_CONTRACT.md`
