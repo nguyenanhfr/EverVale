@@ -42,7 +42,7 @@ profiles:
     industry: normal
     education: normal
     civic: normal
-    defense: normal
+    defense: low
     advanced: low
 
   industry_high:
