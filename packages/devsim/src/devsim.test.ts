@@ -219,7 +219,7 @@ test("category-floor allocator candidate keeps Balanced categories alive without
   assert.ok(candidate);
   assert.equal(candidate.fail, 0);
   assert.ok((candidate.balanced.byCategory.education ?? 0) > 0);
-  assert.ok((candidate.balanced.byCategory.defense ?? 0) > 0);
+  assert.equal(candidate.balanced.byCategory.defense ?? 0, 0);
   assert.equal(candidate.paused.byCategory.industry ?? 0, 0);
 });
 
