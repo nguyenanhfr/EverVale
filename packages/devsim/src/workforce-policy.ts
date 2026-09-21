@@ -9,8 +9,8 @@ import {
   runScenario,
   type ScenarioPolicyTransition,
   type ScenarioReport,
-  type SimSample,
 } from "./scenarios.js";
+import type { SimSample } from "./core.js";
 
 export interface CompiledWorkforceProfile {
   profileName: string;
@@ -157,7 +157,7 @@ export function compileWorkforceProfile(
 ): CompiledWorkforceProfile {
   const policy = loadWorkforcePolicyCandidate();
   const profile = policy.profiles[profileName];
-  if (!profile) profileError(`UNKNOWN_WORKFORCE_PROFILE:${profileName}`);
+  if (!profile) return profileError(`UNKNOWN_WORKFORCE_PROFILE:${profileName}`);
   const compiled = compileWorkforceLevels(profile, options);
   return { ...compiled, profileName };
 }
