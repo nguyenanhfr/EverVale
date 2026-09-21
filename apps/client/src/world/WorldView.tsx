@@ -8,6 +8,7 @@ import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisual } from "./building-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
 import { createRoadVisual } from "./road-visual";
+import { createBlockerVisual } from "./blocker-visual";
 import { createAmbientWorldVisual, updateAmbientVisuals, type AmbientVisualRig } from "./ambient-visual";
 import { createCitizenVisual, createDogVisual, updateCitizenVisual, updateDogVisual } from "./actor-visual";
 import {
@@ -42,55 +43,6 @@ interface Props {
   onPropSelect(propId: string | null): void;
   onRouting?(routedCitizens: number, disconnectedRoutes: number): void;
   onMetrics: ((metrics: RuntimeMetrics) => void) | undefined;
-}
-
-function makeBlocker(blocker: WorldState["blockers"][number]): THREE.Object3D {
-  const group = new THREE.Group();
-
-  if (blocker.definitionId === "fallen_tree") {
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.55, 6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x795b3d, roughness: 1 }),
-    );
-    trunk.rotation.z = Math.PI / 2;
-    trunk.position.y = 0.55;
-    trunk.castShadow = true;
-    group.add(trunk);
-    for (const x of [-2.4, 2.4]) {
-      const crown = new THREE.Mesh(
-        new THREE.ConeGeometry(1.3, 2.2, 7),
-        new THREE.MeshStandardMaterial({ color: 0x526f49, roughness: 1 }),
-      );
-      crown.position.set(x, 1.1, 0);
-      crown.castShadow = true;
-      group.add(crown);
-    }
-  } else {
-    for (let i = 0; i < 5; i += 1) {
-      const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.7 + (i % 3) * 0.18, 0),
-        new THREE.MeshStandardMaterial({ color: 0x77776e, roughness: 1 }),
-      );
-      rock.scale.y = 0.7;
-      rock.position.set((i % 3) * 1.2 - 1.2, 0.5, Math.floor(i / 3) * 1.2 - 0.5);
-      rock.rotation.set(i * 0.4, i * 0.7, 0);
-      rock.castShadow = true;
-      group.add(rock);
-    }
-  }
-
-  if (blocker.state === "CLEARING") {
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(2.2, 0.12, 6, 24),
-      new THREE.MeshBasicMaterial({ color: 0xd7aa54 }),
-    );
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.12;
-    group.add(ring);
-  }
-
-  group.position.set(blocker.position.x, 0, blocker.position.z);
-  return group;
 }
 
 function pointSegmentDistance(
@@ -631,7 +583,7 @@ export function WorldView({
         dynamic.add(createRoadVisual(road, `${current.seed}:${road.id}`));
       }
 
-      (current.blockers ?? []).forEach((blocker) => dynamic.add(makeBlocker(blocker)));
+      (current.blockers ?? []).forEach((blocker) => dynamic.add(createBlockerVisual(blocker)));
 
       const activeConstruction = current.buildings.filter(
         (building) => building.constructionState === "BUILDING",
