@@ -168,3 +168,24 @@ Current runtime additionally verifies:
 - explicit migration runner
 
 Lease activation remains gated on introduction of a second authoritative world-advancement process.
+
+
+## M1.6 runtime boundary hardening
+
+See:
+`docs/77_M1_6_RUNTIME_BOUNDARY_HARDENING.md`
+
+Engineering branch:
+`chatgpt/m1-6-runtime-boundary`
+
+Added without touching visual systems:
+- runtime parsing for every M1 WorldCommand
+- fail-closed unknown-command handling
+- bounded JSON request bodies
+- deterministic 400 / 401 / 403 / 409 / 413 / 415 API errors
+- owner-header sanity checks
+- graceful HTTP + PostgreSQL shutdown
+- repeatable E2E identities independent of stale JSON state
+- protocol/server/application regression tests
+
+Final M1.6 exit requires branch CI to pass TypeScript, unit, build, browser/API E2E, migration rerun, and real PostgreSQL persistence integration.
