@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAuthorityDriftReport, buildRoiReport, runAuthorityTamperProbe } from "./reports.js";
 import { runScenario } from "./scenarios.js";
+import { runStrategicPathPack } from "./strategic-paths.js";
 
 test("healthy planner spends authoritative Money and queues real construction", async () => {
   const report = await runScenario({
@@ -84,4 +85,59 @@ test("scenario replay is deterministic for the same seed and policy", async () =
   assert.deepEqual(a.milestones, b.milestones);
   assert.deepEqual(a.diagnostics, b.diagnostics);
   assert.deepEqual(a.plan, b.plan);
+});
+
+
+test("strategic path scenarios use only build order and job-priority policy overlays", async () => {
+  const industrial = await runScenario({
+    scenarioId: "pure_industrial",
+    hours: 1,
+    seed: 31,
+  });
+  const scholar = await runScenario({
+    scenarioId: "pure_scholar",
+    hours: 1,
+    seed: 31,
+  });
+
+  assert.equal(industrial.strategicPolicy.model, "BUILD_ORDER_AND_JOB_PRIORITY");
+  assert.equal(scholar.strategicPolicy.model, "BUILD_ORDER_AND_JOB_PRIORITY");
+  assert.equal(industrial.balanceOverrides.workshop?.priority, 96);
+  assert.equal(scholar.balanceOverrides.school?.priority, 96);
+});
+
+test("industrial to fortress pivot applies a deterministic priority transition", async () => {
+  const report = await runScenario({
+    scenarioId: "pivot_industrial_to_fortress",
+    hours: 5,
+    seed: 32,
+  });
+
+  assert.ok(
+    report.strategicPolicy.transitionsApplied.includes(
+      "INDUSTRIAL_TO_FORTRESS",
+    ),
+  );
+  assert.ok(
+    report.diagnostics.some(
+      (item) => item.code === "POLICY_TRANSITION_INDUSTRIAL_TO_FORTRESS",
+    ),
+  );
+});
+
+test("strategic path pack emits Constitution directional diagnostics without pretending Charter bonuses exist", async () => {
+  const report = await runStrategicPathPack({
+    hours: 2,
+    strongHours: 3,
+    seed: 33,
+  });
+
+  assert.equal(report.model, "BUILD_ORDER_AND_JOB_PRIORITY_ONLY");
+  assert.equal(report.metrics.length, 8);
+  assert.equal(report.directionalGates.length, 10);
+  assert.ok(
+    report.unresolvedDesignLimits.some((item) =>
+      item.includes("Charter bonuses"),
+    ),
+  );
 });
