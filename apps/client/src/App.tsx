@@ -7,7 +7,7 @@ import type {
   WorldViewDto,
 } from "@evervale/protocol/world";
 import { devLogin, getWorld, sendCommand } from "./api";
-import { WorldView, type RuntimeMetrics } from "./world/WorldView";
+import { WorldView, type OverlayMode, type RuntimeMetrics } from "./world/WorldView";
 import { constructionVisualState } from "./world/construction-visual";
 
 type Mode = "SELECT" | "BUILD" | "ROAD" | "DECOR" | "MOVE_PROP";
@@ -70,6 +70,8 @@ export default function App() {
   const [routingHealth, setRoutingHealth] = useState({ routed: 0, disconnected: 0 });
   const [dismissedCombatId, setDismissedCombatId] = useState<string | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [overlayMode, setOverlayMode] = useState<OverlayMode>("NONE");
+  const [overlayOpen, setOverlayOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!ownerId) return;
@@ -331,6 +333,7 @@ export default function App() {
         propRotation={activePreviewRotation}
         selectedPropId={selectedPropId}
         selectedBuildingId={selectedBuildingId}
+        overlayMode={overlayMode}
         movingPropId={movingPropId}
         roadStart={roadStart}
         visualPopulationOverride={stressCitizens}
@@ -428,6 +431,80 @@ export default function App() {
             Return to Town
           </button>
         </section>
+      )}
+
+      <aside className="mode-dock hud-panel" aria-label="Mode tools">
+        <button
+          className={mode === "SELECT" ? "active" : ""}
+          onClick={enterSelect}
+          title="Select"
+        >
+          Select
+        </button>
+        <button
+          className={catalogTab === "BUILD" && mode !== "ROAD" ? "" : ""}
+          onClick={() => {
+            setCatalogTab("BUILD");
+            setMode("SELECT");
+          }}
+          title="Build"
+        >
+          Build
+        </button>
+        <button
+          className={mode === "ROAD" ? "active" : ""}
+          onClick={() => {
+            setMode("ROAD");
+            setSelectedBuild(null);
+            setSelectedProp(null);
+            setRoadStart(null);
+          }}
+          title="Roads"
+        >
+          Roads
+        </button>
+        <button
+          className={overlayOpen || overlayMode !== "NONE" ? "active" : ""}
+          aria-expanded={overlayOpen}
+          onClick={() => setOverlayOpen((value) => !value)}
+          title="Overlays"
+        >
+          Overlay
+        </button>
+      </aside>
+
+      {overlayOpen && (
+        <aside className="overlay-picker hud-panel" data-testid="overlay-picker">
+          <div className="overlay-picker-heading">
+            <div>
+              <span className="eyebrow">OVERLAYS</span>
+              <strong>Town Analysis</strong>
+            </div>
+            <button onClick={() => setOverlayOpen(false)} aria-label="Close overlays">×</button>
+          </div>
+          <div className="overlay-options">
+            {([
+              ["NONE", "None", "Clean world view"],
+              ["WORKFORCE", "Workforce", "Green = staffed · amber = partial · red = empty"],
+              ["OPERATION", "Operation", "Building health and repair state"],
+              ["SAFETY", "Safety", "Safety-producing building coverage"],
+              ["EDUCATION", "Education", "Education service coverage"],
+              ["RECREATION", "Recreation", "Recreation service coverage"],
+            ] as Array<[OverlayMode, string, string]>).map(([value, label, description]) => (
+              <button
+                key={value}
+                className={overlayMode === value ? "active" : ""}
+                onClick={() => {
+                  setOverlayMode(value);
+                  setOverlayOpen(false);
+                }}
+              >
+                <span>{label}</span>
+                <small>{description}</small>
+              </button>
+            ))}
+          </div>
+        </aside>
       )}
 
       {alertsOpen && (
