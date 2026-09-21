@@ -190,6 +190,20 @@ export class SimHarness {
     return this.service.getOrCreate(this.ownerId);
   }
 
+  applyBuildingOverrides(
+    overrides: Record<string, Partial<SimulationDefinitions["buildings"][string]>>,
+  ): void {
+    for (const [buildingId, override] of Object.entries(overrides)) {
+      const existing = this.definitions.buildings[buildingId];
+      if (!existing) throw new Error(`UNKNOWN_BUILDING_OVERRIDE:${buildingId}`);
+      this.definitions.buildings[buildingId] = {
+        ...existing,
+        ...override,
+        id: existing.id,
+      };
+    }
+  }
+
   async world(): Promise<WorldState> {
     return this.service.getOrCreate(this.ownerId);
   }
