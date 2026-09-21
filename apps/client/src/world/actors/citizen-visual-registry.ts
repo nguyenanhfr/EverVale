@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { CitizenPresentationRole } from "../visual-identity";
 import { createCitizenVisual } from "./citizen-visual";
+import { generatedCitizenFactories } from "./generated/generated-citizen-factories";
 
 export interface CitizenVisualFactoryContext {
   worldSeed: string | number;
@@ -16,7 +17,7 @@ export type CitizenVisualFactory = (
 
 const generatedFactories: Partial<
   Record<CitizenPresentationRole, CitizenVisualFactory>
-> = {};
+> = { ...generatedCitizenFactories };
 
 export function registerGeneratedCitizenFactory(
   role: CitizenPresentationRole,
@@ -28,7 +29,7 @@ export function registerGeneratedCitizenFactory(
 function normalizeCitizenObject(
   object: THREE.Object3D,
   context: CitizenVisualFactoryContext,
-  source: "img2threejs" | "procedural",
+  source: "generated_factory" | "procedural",
 ): THREE.Object3D {
   object.userData.visualRole = context.role;
   object.userData.visualSource = source;
@@ -49,7 +50,7 @@ export function createCitizenVisualFromRegistry(
 ): THREE.Object3D {
   const generated = generatedFactories[context.role];
   if (generated) {
-    return normalizeCitizenObject(generated(context), context, "img2threejs");
+    return normalizeCitizenObject(generated(context), context, "generated_factory");
   }
 
   return normalizeCitizenObject(
