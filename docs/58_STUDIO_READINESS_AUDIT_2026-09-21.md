@@ -1,6 +1,8 @@
 # 58 — Studio Readiness Audit — 2026-09-21
 
-Status: **PASS FOR M0/M1 — DESIGN/DATA GAPS LOCKED**
+Status: **HISTORICAL PASS — ECONOMY/GAMEPLAY PARTIALLY REOPENED**
+
+> **2026-09-21 RE-AUDIT OVERRIDE — ECONOMY/GAMEPLAY:** the Economy/Society PASS in this historical audit is reopened by `docs/80_GAMEPLAY_SYSTEMS_STUDIO_REAUDIT.md`. The original long-run harness bypasses real purchase/construction progression and cannot serve as canonical economy proof. Product identity remains valid; new economy/progression feature code is held until the DevSim and server-authority gates in docs 81–82 are satisfied.
 
 ## Executive verdict
 
