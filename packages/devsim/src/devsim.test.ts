@@ -5,6 +5,7 @@ import { runScenario } from "./scenarios.js";
 import { SimHarness } from "./core.js";
 import { runStrategicPathPack } from "./strategic-paths.js";
 import { compileWorkforceProfile, runWorkforcePolicyPack } from "./workforce-policy.js";
+import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
 
 test("healthy planner spends authoritative Money and queues real construction", async () => {
   const report = await runScenario({
@@ -188,4 +189,23 @@ test("workforce policy pack measures W0-W7 without changing runtime allocator", 
   assert.ok(report.gates.some((gate) => gate.id === "WG7_OMNI_HIGH_REJECTED" && gate.pass));
   assert.equal(report.rapidSwitch.deterministic, true);
   assert.ok(report.scenarios.some((item) => item.id === "W0_BALANCED_DEFAULT"));
+});
+
+
+test("workforce allocator lab compares category-aware candidates against flat priority", () => {
+  const report = runWorkforceAllocatorLab();
+  console.log("DEVSIM_WORKFORCE_ALLOCATOR_LAB", JSON.stringify(report));
+
+  assert.ok(report.results.length > 0);
+  assert.equal(
+    report.algorithmSummary.current_flat_priority.balanced.byCategory.education ?? 0,
+    0,
+  );
+  assert.ok(
+    (report.algorithmSummary.tiered_category_round_robin.balanced.byCategory.education ?? 0) > 0,
+  );
+  assert.equal(
+    report.algorithmSummary.tiered_category_round_robin.paused.byCategory.industry ?? 0,
+    0,
+  );
 });
