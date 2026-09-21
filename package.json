@@ -14,7 +14,9 @@
     "validate:content": "python tools/validation/validate_content.py",
     "validate:worldgen": "python tools/validation/validate_worldgen.py --seeds 1000",
     "test:e2e": "playwright test",
-    "db:migrate": "pnpm --filter @evervale/persistence db:migrate"
+    "db:migrate": "pnpm --filter @evervale/persistence db:migrate",
+    "devsim": "pnpm --filter @evervale/devsim devsim",
+    "devsim:smoke": "pnpm --filter @evervale/devsim smoke"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
