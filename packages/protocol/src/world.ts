@@ -11,6 +11,19 @@ export interface BuildCatalogEntryDto {
   footprintCellsZ: number;
   gridCellMeters: number;
   sizeTitle: string;
+  workers: number;
+  jobCategory: string | null;
+  moneyPerWorker: number;
+  powerProduction: number;
+  powerUse: number;
+  waterProduction: number;
+  waterUse: number;
+  techProduction: number;
+  upkeep: number;
+  housingAdd: number;
+  educationCoverageAdd: number;
+  recreationCoverageAdd: number;
+  safetyAdd: number;
 }
 
 export interface PropCatalogEntryDto {
