@@ -19,6 +19,8 @@ jobs:
       - run: pnpm test
       - name: DevSim authoritative smoke gate
         run: pnpm devsim:smoke
+      - name: DevSim 8h economy baseline report
+        run: pnpm devsim baseline --hours 8 --seed 1
       - run: pnpm build
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
