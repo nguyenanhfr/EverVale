@@ -116,6 +116,8 @@ export interface SimSample {
   activeConstruction: number;
   completedBuildings: number;
   moneyFlow: MoneyFlow;
+  workersByJobCategory: Record<string, number>;
+  unmetWorkersByJobCategory: Record<string, number>;
 }
 
 export function currentMoneyFlow(
@@ -203,6 +205,18 @@ export class SimHarness {
         id: existing.id,
       };
     }
+
+    if (this.repository.world) {
+      const buildings = this.repository.world.buildings.map((instance) => {
+        const override = overrides[instance.definitionId];
+        if (!override || typeof override.priority !== "number") return instance;
+        return { ...instance, priority: override.priority };
+      });
+      this.repository.replaceForFixture({
+        ...this.repository.world,
+        buildings,
+      });
+    }
   }
 
   async world(): Promise<WorldState> {
@@ -215,6 +229,32 @@ export class SimHarness {
   }
 
   sample(world: WorldState): SimSample {
+    const workersByJobCategory: Record<string, number> = {};
+    const demandByJobCategory: Record<string, number> = {};
+
+    for (const building of world.buildings) {
+      if (
+        building.constructionState !== "COMPLETE" ||
+        building.damageState === "DISABLED"
+      ) {
+        continue;
+      }
+      const definition = this.definitions.buildings[building.definitionId];
+      if (!definition || definition.workers <= 0) continue;
+      const category = definition.jobCategory ?? "uncategorized";
+      workersByJobCategory[category] =
+        (workersByJobCategory[category] ?? 0) + building.workersAssigned;
+      demandByJobCategory[category] =
+        (demandByJobCategory[category] ?? 0) + definition.workers;
+    }
+
+    const unmetWorkersByJobCategory = Object.fromEntries(
+      Object.entries(demandByJobCategory).map(([category, demand]) => [
+        category,
+        Math.max(0, demand - (workersByJobCategory[category] ?? 0)),
+      ]),
+    );
+
     return {
       atSeconds: world.simulationSeconds,
       revision: world.revision,
@@ -236,6 +276,8 @@ export class SimHarness {
       activeConstruction: world.buildings.filter((item) => item.constructionState === "BUILDING").length,
       completedBuildings: world.buildings.filter((item) => item.constructionState === "COMPLETE").length,
       moneyFlow: currentMoneyFlow(world, this.definitions),
+      workersByJobCategory,
+      unmetWorkersByJobCategory,
     };
   }
 
