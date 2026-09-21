@@ -1,439 +1,681 @@
 # 85 — Strategic Path Baseline Report v1
 
-Status: **EVIDENCE REPORT — DESIGN GAPS CONFIRMED / NO BALANCE CHANGE AUTHORIZED**
+Status: **DIRECTIONAL PASS — BALANCE NOT LOCKED**
 
 Date: 2026-09-21
 
-Source:
-- DevSim PR #12
-- DevSim commit: `cb7f77798f33b1224ce56a889b96e0ef75eeb9df`
-- horizon: 8 real hours for core paths
-- strong multi-path probe: 12 real hours
-- seed: 1
-- model: `BUILD_ORDER_AND_JOB_PRIORITY_ONLY`
+Authority:
+- strategic direction: `docs/83_CORE_GAMEPLAY_STRATEGIC_PATHS_AND_DEBT.md`
+- Constitution candidate: `docs/84_CORE_GAMEPLAY_CONSTITUTION_V1.md`
+- measurement engine: `packages/devsim/src/strategic-paths.ts`
 
-This report measures the current authoritative runtime rules.
+Measured source revision:
 
-It does **not** simulate Charter bonuses because Charter gameplay does not exist yet.
+`a905ecd518b8d5121dad6196630e0deb7db2e4d6`
 
----
+CI measurement run:
 
-# 1. Summary
+```
+pnpm devsim paths --hours 8 --long-hours 12 --strong-hours 12 --seed 1
+```
 
-The current runtime already creates two recognizable strategic identities:
+Important:
 
-- **Industrial**
-- **Scholar**
+This report is **proof of strategic direction**, not final balance proof.
 
-The current runtime does **not yet create distinct identities** for:
+Current path modeling uses:
+- real authoritative WorldService/domain simulation
+- real building costs
+- real construction
+- real Workforce allocation
+- real combat/aftermath
+- build order
+- job-priority overlays
 
-- **Civic**
-- **Fortress**
-
-The main reasons are different.
-
-Civic:
-- additional Housing / Parks do not create a sufficiently unique Population advantage within the 8h horizon
-
-Fortress:
-- the current M1 test wave is too weak to distinguish additional Guard investment from ordinary starter defense
-
-This means the Constitution is directionally valid, but the current gameplay systems are not yet sufficient to express all four paths.
+It does **not** invent Settlement Charter bonuses that do not exist in runtime.
 
 ---
 
-# 2. Core path results
+# 1. Executive result
 
-| Path | Money @ 8h | Population | Tech Points | T1 | Condition Loss |
-|---|---:|---:|---:|---:|---:|
-| Industrial | 1597.0 | 19 | 0 | never | 0 |
-| Scholar | 276.2 | 23 | 570.5 | 110 min | 18 |
-| Civic | 1029.3 | 23 | 162.0 | 236 min | 0 |
-| Fortress | 251.4 | 23 | 181.5 | 197 min | 0 |
+All ten Constitution directional gates passed:
 
-Additional observations:
+- G1 Industrial identity: PASS
+- G2 Scholar identity: PASS
+- G3 Civic identity: PASS
+- G4 Fortress identity: PASS
+- G5 Sacrifice: PASS
+- G6 Omni penalty: PASS
+- G7 Hybrid validity: PASS
+- G8 Pivot viability: PASS
+- G9 Pivot cost: PASS
+- G10 No dominant path: PASS
 
-Industrial:
-- Workforce saturated ~7.18h
-- School zero-staff ~4.52h
+This means the existing systems already contain the beginnings of the intended strategic game.
 
-Scholar:
-- Workforce saturated ~5.93h
-- School zero-staff 0h
+However, several path results are too extreme or incomplete to become canonical balance.
 
-Civic:
-- Workforce saturated ~5.2h
-- School zero-staff 0h
+The correct conclusion is:
 
-Fortress:
-- Workforce saturated ~5.05h
-- treasury soft-lock candidate detected
-- School zero-staff 0h
+> **The path model is viable. The current numbers are not yet ready to lock.**
 
 ---
 
-# 3. Constitution directional gates
+# 2. Eight-hour path results
 
-## G1 — Industrial identity
+| Path | Money | Population | Tech | T1 | Condition loss | Main issue |
+|---|---:|---:|---:|---:|---:|---|
+| Industrial | 1597.0 | 19 | 0 | never | 35 | Water collapses; School starves |
+| Scholar | 276.2 | 23 | 570.5 | 110 min | 35 | Very low treasury |
+| Civic | 1029.3 | 23 | 162.0 | 236 min | 35 | identity emerges more clearly at longer horizon |
+| Fortress | 251.4 | 23 | 181.5 | 197 min | **18** | treasury soft-lock candidate |
+| Balanced Hybrid | 1826.9 | 20 | 25.25 | never | 35 | School starves ~5.85h |
+| Omni Build | 395.7 | 23 | 0 | never | 35 | School starves ~6.68h |
+| Pivot Industry→Fortress | 1897.6 | 19 | 0 | never | **18** | pivot works, Tech remains sacrificed |
+| Strong Multipath (12h) | 2167.8 | 28 | 0 | never | 0 | School starves ~10.35h |
+
+---
+
+# 3. G1 — Industrial identity
+
+Result:
 
 **PASS**
 
-Money ranking:
+Money leaderboard among pure paths:
 
-`Industrial > Civic > Scholar > Fortress`
+```
+Industrial
+> Civic
+> Scholar
+> Fortress
+```
 
-Industrial already has a clear economic identity.
+At 8h:
+
+- Industrial Money: **1597**
+- Civic Money: 1029
+- Scholar Money: 276
+- Fortress Money: 251
+
+The Industry path has a real economic identity.
+
+But the cost is severe:
+
+- Tech = **0**
+- School zero staff ≈ **4.52h**
+- Water ends at **0**
+- Workforce saturated ≈ **7.18h**
+- combat outcome is BREACH in the stress wave
+
+This is strong evidence of real opportunity cost.
+
+It may also be too binary.
+
+### Interpretation
+
+Good:
+- Industry clearly wins Money.
+- It sacrifices Tech.
+- utility pressure finally becomes visible.
+
+Concern:
+- Tech fully dies rather than merely slowing.
+- Water reaches zero for a long period.
+- this may feel like an opaque trap unless player priority/utility consequences are clearly explained.
 
 ---
 
-## G2 — Scholar identity
+# 4. G2 — Scholar identity
+
+Result:
 
 **PASS**
 
-Tech ranking:
+Tech leaderboard:
 
-`Scholar > Fortress > Civic > Industrial`
+```
+Scholar
+> Fortress
+> Civic
+> Industrial
+```
 
-Scholar reaches T1 at approximately:
+Scholar at 8h:
 
-`6600 seconds = 110 minutes`
-
-Industrial never reaches T1 within 8 hours.
-
-This is a strong and meaningful sacrifice.
-
----
-
-## G3 — Civic identity
-
-**FAIL**
-
-Population ranking:
-
-`Scholar = Civic = Fortress > Industrial`
-
-The sort order displayed Scholar first, but Scholar/Civic/Fortress all finish at Population 23.
-
-Therefore Civic does not yet own a distinct signature outcome.
-
-Current Housing/Recreation investment is not enough by itself to make Civic measurably superior within the target horizon.
-
----
-
-## G4 — Fortress identity
-
-**FAIL**
-
-Current M1 test wave result:
-
-- Industrial: 0 condition loss
-- Civic: 0
-- Fortress: 0
-- Scholar: 18
-
-The starter combat package includes two free Town Wardens before Guard Post contribution.
-
-The fixed M1 wave contains only:
-- 3 Nibblers
-- 1 Wobble Slime
-
-This is a tutorial/smoke wave.
-
-It is not a valid benchmark for Defense specialization.
-
-Fortress cannot prove its value against a threat that Industrial can already repel cleanly.
-
----
-
-## G5 — Sacrifice
-
-**PASS**
-
-Metric leadership is split between:
-- Industrial
-- Scholar
-
-No single path currently wins every metric.
-
----
-
-## G6 — Omni penalty
-
-**DIRECTIONALLY PASS**
-
-Omni Build after 8h:
-
-- Money: ~395.7
+- T1: **6600s = 110 minutes**
+- Tech: **570.5**
 - Population: 23
-- Tech: 0
-- T1: never
-- School zero-staff: ~6.68h
+- Money: **276.2**
 
-The current Workforce system already punishes trying to build everything.
+This is almost exactly the intended Knowledge fantasy:
 
-This is valuable evidence.
+> sacrifice immediate treasury to reach Tech much earlier.
 
-However the penalty is partially opaque because player job-priority control is not yet implemented.
+Current documented target for intentional T1:
+
+**90–150 minutes**
+
+Scholar reaches T1 at:
+
+**110 minutes**
+
+This is a strong result.
+
+### Concern
+
+Money drops extremely low.
+
+Scholar must remain recoverable and not become a hidden treasury trap.
 
 ---
 
-## G7 — Balanced hybrid validity
+# 5. G3 — Civic identity
 
-**PASS FOR SURVIVAL, FAIL FOR QUALITY**
+Result:
 
-Balanced Hybrid:
+**PASS at 12h**
 
-- Money: ~1826.9
+At 8h:
+- Scholar/Civic/Fortress all reach Population 23.
+
+At 12h:
+- Civic: **28**
+- Scholar: 24
+- Fortress: 24
+- Industrial: 22
+
+Long-horizon population leaderboard:
+
+```
+Civic
+> Scholar
+> Fortress
+> Industrial
+```
+
+This shows an important design property:
+
+**Civic is a compounding path.**
+
+Its benefit should not necessarily dominate immediately.
+
+That fits the fantasy:
+
+> invest in people now, obtain more Workforce later.
+
+### Concern
+
+The identity appears more slowly than the other branches.
+
+Tutorial/UX must not promise an immediate payoff that does not exist.
+
+---
+
+# 6. G4 — Fortress identity
+
+Result:
+
+**PASS**
+
+Condition loss under the same stress wave:
+
+- Fortress: **18**
+- Industrial: 35
+- Scholar: 35
+- Civic: 35
+
+Fortress therefore materially reduces combat damage.
+
+That is the first measured proof that Defense investment is strategically different.
+
+However:
+
+- Money at 8h: **251.4**
+- critical diagnostic:
+  `TREASURY_SOFTLOCK_CANDIDATE`
+- first detected around **8400s = 140 minutes**
+
+### Interpretation
+
+The basic Defense tax exists.
+
+But Fortress ROI is incomplete because authoritative PvE rewards do not exist yet.
+
+At present the branch pays:
+- Money
+- Workforce
+- growth opportunity cost
+
+and receives mainly:
+- lower damage
+
+The missing PvE reward loop is therefore now a measured blocker rather than a theoretical one.
+
+---
+
+# 7. G5 — Sacrifice
+
+Result:
+
+**PASS**
+
+Each pure path wins exactly one signature metric:
+
+```
+Industrial → Money
+Scholar    → Tech
+Civic      → long-horizon Population
+Fortress   → combat damage reduction
+```
+
+No pure path wins all categories.
+
+This is the most important result of the first Strategic Path Pack.
+
+It means the Constitution does not require inventing an entirely new game.
+
+The current systems already contain useful competitive pressure.
+
+The next balance pass should refine that pressure, not replace it.
+
+---
+
+# 8. G6 — Omni penalty
+
+Result:
+
+**PASS**
+
+Omni Build is within 5% of the best pure strategy on only:
+
+**1 / 4 signature metrics**
+
+At 8h:
+
+- Money: 395.7
+- Population: 23
+- Tech: **0**
+- no T1
+- School zero staff ≈ **6.68h**
+- Workforce saturated ≈ **7.18h**
+
+This strongly supports the leadership decision:
+
+> Trying to build everything should not equal specializing.
+
+Current omni behavior already pays real opportunity cost.
+
+### Concern
+
+The penalty currently comes heavily from hidden Workforce priority behavior.
+
+That must become player-visible before it can be considered good gameplay.
+
+---
+
+# 9. G7 — Balanced Hybrid
+
+Result:
+
+**PASS for viability**
+
+At 8h:
+
+- Money: **1826.9**
 - Population: 20
 - Tech: 25.25
-- T1: never
-- School zero-staff: ~5.85h
+- no T1
+- no critical diagnostics
 
-The town survives and remains financially strong.
+The hybrid is financially healthy.
 
-But it does not produce a satisfying balanced progression.
+However:
 
-Default fixed job priority heavily favors Money.
+- School zero staff ≈ **5.85h**
+- Workforce saturated ≈ **7.18h**
 
-Therefore current "balanced" behavior is actually economy-biased.
+So current “balanced” runtime defaults are not strategically balanced.
 
----
+They are economically biased.
 
-## G8 — Pivot viability
+### Design implication
 
-**PASS AS A DEV PROBE**
+Default priority values need review.
 
-The DevSim Industrial → Fortress priority transition applies successfully without deleting buildings or corrupting state.
+Balanced should mean:
 
-This proves that Workforce reallocation can support a future pivot mechanic.
+> no signature strength, no catastrophic starvation.
 
-It does not yet prove a real Charter transition cost.
+It should not mean:
 
----
-
-## G9 — Pivot cost
-
-**NOT YET CANONICAL**
-
-The current probe changes priority only.
-
-No:
-- Charter cooldown
-- retraining cost
-- transition Money cost
-- policy transition state
-
-exists yet.
-
-Therefore a real pivot-cost gate cannot be locked.
+> Economy silently wins the worker allocator.
 
 ---
 
-## G10 — No dominant path
+# 10. G8/G9 — Pivot
 
-**DIRECTIONALLY PASS**
+Result:
 
-Current signature wins are split.
+**PASS directionally**
 
-But this result should not be over-read because Civic and Fortress signatures are not yet properly measurable.
+Scenario:
 
----
+```
+Industrial
+→ hour 4
+→ Fortress priority transition
+```
 
-# 4. Strong multi-path probe
+Transition successfully applied:
 
-12h broad-development attempt:
+`INDUSTRIAL_TO_FORTRESS`
 
-- Money: ~2167.8
-- Population: 28
+Final 8h:
+
+- Money: **1897.6**
+- Population: 19
 - Tech: 0
-- T1: never
-- Workforce saturated: ~11.18h
-- School zero-staff: ~10.35h
+- condition loss: **18**
 
-This is a critical result.
+The pivot succeeds at turning an Industry-heavy town into a much stronger defensive town.
 
-The current runtime does **not** naturally produce a powerful multi-path town.
+That demonstrates:
 
-Instead it produces:
+- no restart required
+- buildings remain
+- job-priority transition can materially change outcome
 
-> a rich town whose automatic priorities starve Research almost permanently.
+### Limitation
 
-This means strong multi-path progression will require:
-- intentional player policy
-- larger Population/Workforce
-- progression unlocks
-- or later external advantages
+This is still a priority-policy pivot.
 
-It should not be solved by simply adding more Money.
+A real future Charter system does not yet exist.
+
+The current G9 is a directional probe, not final pivot-cost proof.
 
 ---
 
-# 5. Main finding — Workforce already creates real strategy
+# 11. G10 — No dominant pure path
 
-The strongest working strategic system today is:
+Result:
 
-**finite Workforce**
+**PASS**
 
-Example:
+Maximum signature-metric wins by any pure path:
 
-Industrial path:
-- Workshops consume available workers
-- School starves
-- Money rises
-- Tech stalls
+**1**
 
-Scholar path:
-- School receives workers
-- Tech accelerates
-- treasury becomes fragile
+This is a healthy first signal.
 
-This is exactly the kind of opportunity cost EverVale needs.
+But it is not enough by itself.
 
-The next game design should build on this rather than inventing many new resources.
-
----
-
-# 6. Main finding — fixed priority is currently making the choice for the player
-
-The system has strategic consequences.
-
-But player agency is incomplete.
-
-Current example:
-
-`Workshop priority 80 > School priority 70 > Guard Post priority 45`
-
-Therefore a player may build:
-- Workshop
-- School
-- Guard
-
-without consciously choosing Economy,
-
-yet the allocator effectively chooses Economy for them.
-
-That is unacceptable for the final strategic core.
-
-Future gameplay needs server-authoritative player priority/policy control.
+Future candidate balance must also compare:
+- total utility pressure
+- recovery time
+- threat/reward economics
+- progression unlock value
+- soft-lock probability
+- multi-seed variance
 
 ---
 
-# 7. Civic gap
+# 12. Strong Multipath result
 
-Civic needs a measurable signature advantage.
+At 12h:
 
-Do not immediately add a numeric bonus.
+- Money: **2167.8**
+- Population: 28
+- Tech: **0**
+- School zero staff ≈ **10.35h**
+- Workforce saturated ≈ **11.18h**
 
-First evaluate longer-horizon behavior.
+This proves something important:
 
-Required next probes:
+Simply becoming larger/richer does **not** automatically create balanced multi-path capability under current default priorities.
 
-- 8h
-- 12h
-- 24h
+The settlement still sacrifices Knowledge almost entirely.
 
-Measure:
-- Population
-- Workforce
-- utility pressure
-- treasury burden
-- recovery capacity
+Therefore the future rule:
 
-If Civic naturally wins long-term Population through build order alone, no artificial Charter growth multiplier is required.
+> strong players may eventually diversify
 
-If not, a Civic-specific progression mechanic may be needed.
+will require one or more of:
 
----
+- explicit player priority control
+- better Workforce growth
+- path transition/support policies
+- efficiency unlocks
+- PvE/external rewards
+- improved utility/production efficiency
 
-# 8. Fortress gap
-
-Fortress cannot be evaluated using the current M1 tutorial wave.
-
-Required:
-
-## DevSim Defense Stress Probe
-
-Rules:
-
-- use the real combat engine
-- use canonical unit HP/DPS/Armor
-- spawn defenders through normal Town Center / Guard Post logic
-- increase enemy **composition/count only** in DevSim
-- do not change runtime wave
-- do not change canonical combat stats
-- compare equal-town paths under identical seeded stress
-
-Measure:
-- outcome
-- defender HP loss
-- building condition loss
-- repair burden
-- economic recovery
-- later PvE reward ROI
-
-This becomes the valid Defense benchmark.
+It should not be solved by merely giving more starting Money.
 
 ---
 
-# 9. PvE reward still missing
+# 13. Current strategic leaderboards
 
-Even after Fortress can prove lower damage, its economic purpose remains incomplete.
+## Money
 
-Current loop:
+```
+Industrial
+> Civic
+> Scholar
+> Fortress
+```
 
-`Defense spend → lower damage`
+## Tech
 
-Target:
+```
+Scholar
+> Fortress
+> Civic
+> Industrial
+```
 
-`Defense spend → lower damage + access to risky PvE reward`
+## Population at 12h
 
-Required later DevSim metric:
+```
+Civic
+> Scholar
+> Fortress
+> Industrial
+```
 
-`PvE Net Value = Reward - Upkeep - Readiness Loss - Repair - Opportunity Cost`
+## Defense / damage reduction
 
-Defense should have value.
+```
+Fortress
+> Industrial
+> Scholar
+> Civic
+```
 
-It must not become the best Money generator.
-
----
-
-# 10. Design decision after baseline v1
-
-Do not tune final Economy v0.3 yet.
-
-First:
-
-1. run Civic long-horizon probe
-2. create Defense Stress Probe
-3. add player-policy candidate overlays in DevSim
-4. re-run all Constitution gates
-5. identify the minimum missing mechanics
-
-Only then propose candidate numeric balance.
-
----
-
-# 11. Current path maturity
-
-| Path | Identity | Current maturity |
-|---|---|---|
-| Industrial | Money / construction | STRONG |
-| Scholar | Tech / early unlock | STRONG |
-| Civic | Population / resilience | WEAK / UNPROVEN |
-| Fortress | PvE survival / reward access | UNPROVEN |
-| Hybrid | broad resilience | PLAYABLE BUT ECONOMY-BIASED |
-| Omni | broad development | CORRECTLY PRESSURED, BUT OPAQUE |
-| Pivot | strategic reallocation | TECHNICALLY FEASIBLE, DESIGN COST MISSING |
+This is the desired broad shape.
 
 ---
 
-# 12. Immediate next work
+# 14. Most important measured problems
 
-DevSim only:
+## P0-A — Default Workforce allocation is doing too much game design invisibly
 
-- Civic 12h/24h horizon test
-- Defense Stress Probe
-- player Workforce-policy candidate test
-- repeat Constitution report
+Evidence:
+- Balanced Hybrid School zero staff ~5.85h
+- Omni School zero staff ~6.68h
+- Strong Multipath School zero staff ~10.35h
+- Industrial School zero staff ~4.52h
 
-No gameplay runtime implementation should precede those results.
+The player currently does not own enough of this decision.
+
+Required next design:
+- server-authoritative category priority control
+- visible explanation of displaced workers
+- bounded semantic settings
+
+---
+
+## P0-B — PvE Defense has no complete positive reward loop
+
+Fortress clearly prevents damage.
+
+But its treasury becomes dangerously weak.
+
+Without meaningful PvE reward:
+- Defense is mostly insurance
+- high Defense investment can become economically irrational
+
+Required next:
+**PvE Reward Contract + DevSim ROI**
+
+---
+
+## P0-C — Industrial specialization can collapse Water
+
+Industrial 8h final Water:
+
+**0 / 120**
+
+Time at Water zero is substantial in the path report.
+
+This is directionally good because Industry must create infrastructure pressure.
+
+But the consequence must be:
+- visible
+- recoverable
+- intentional
+
+and current utility shortage mainly affects Happiness rather than fully throttling operation.
+
+---
+
+## P1-A — Scholar may be too cash-poor
+
+Scholar achieves excellent Tech timing:
+
+**T1 = 110 min**
+
+but Money at 8h:
+
+**276.2**
+
+This could be acceptable if:
+- advanced Tech creates real compensating options
+- player remains recoverable
+
+Needs candidate testing.
+
+---
+
+## P1-B — Civic identity arrives later
+
+Civic becomes clearly best at Population only by the 12h horizon.
+
+This may be correct for a compounding path.
+
+Needs UX/session design so early Civic investment still produces satisfying visible feedback.
+
+---
+
+## P1-C — Strong Multipath is not yet a functioning late-game concept
+
+Current 12h broad-build path still has:
+- zero Tech
+- extreme School starvation
+
+A true late-game multi-path test needs a later-stage fixture or earned surplus model.
+
+The current result should not be used to define endgame balance.
+
+---
+
+# 15. Constitution verdict
+
+The strategic Constitution is **viable**.
+
+Measured evidence supports the four-path model:
+
+- Industry has a real Money advantage.
+- Scholar has a real Tech advantage.
+- Civic has a real long-term Population advantage.
+- Fortress has a real damage-reduction advantage.
+- Omni Build is penalized.
+- Pivoting is technically viable.
+- No pure path dominates all signature metrics.
+
+Therefore:
+
+**DO NOT redesign the four-path concept.**
+
+The next task is to tune and expose it.
+
+---
+
+# 16. What is still missing before Economy v0.3 lock
+
+Required before final balance:
+
+1. Player-facing Workforce category priority contract.
+2. Funding-failure authoritative model.
+3. PvE reward model.
+4. Defense ROI simulation including reward + repair avoidance.
+5. Utility operational throttling or explicit decision whether Happiness-only pressure is sufficient.
+6. Better late-game/strong-multipath fixture.
+7. Multi-seed path comparison.
+8. Soft-lock/recovery thresholds.
+9. Quest/Tutorial integration only after these rules stabilize.
+
+---
+
+# 17. Recommended next design step
+
+Do **not** immediately change all prices.
+
+The next design item should be:
+
+# WORKFORCE & STRATEGIC PRIORITY CONSTITUTION
+
+because the Strategic Path Pack shows that Workforce allocation is currently the strongest mechanism distinguishing paths.
+
+That constitution should lock:
+
+- player-facing priority categories
+- critical utility minimums
+- emergency Defense override
+- how many priorities the player can raise simultaneously
+- what happens when priorities tie
+- how worker displacement is explained
+- whether PAUSED is allowed
+- pivot/retraining delay
+- server-authoritative policy data
+
+After that:
+
+# PvE Reward Contract
+
+Then DevSim can evaluate a complete Fortress economy.
+
+---
+
+# 18. CI note
+
+The Strategic Path Pack itself passed:
+- typecheck
+- unit tests
+- DevSim smoke
+- DevSim baseline
+- DevSim path report
+- Civic long-horizon report
+- build
+- PostgreSQL integration
+
+The full Engineering workflow was blocked later by the pre-existing visual stress gate:
+
+```
+M1 stress frame delta
+Expected: > 30
+Received: 29
+```
+
+No DevSim or gameplay-path failure caused that browser result.
+
+No graphics/performance threshold was changed.
