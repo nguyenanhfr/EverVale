@@ -7,6 +7,7 @@ import { runStrategicPathPack } from "./strategic-paths.js";
 import { compileWorkforceProfile, runWorkforceCandidatePolicyPack, runWorkforcePolicyPack } from "./workforce-policy.js";
 import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
 import { runDefenseReadinessLab } from "./defense-readiness.js";
+import { runPveRewardSweep } from "./pve-reward.js";
 
 test("healthy planner spends authoritative Money and queues real construction", async () => {
   const report = await runScenario({
@@ -233,10 +234,22 @@ test("Defense Readiness lab binds Guard deployment to staffed source capacity", 
 });
 
 test("candidate W0-W7 uses category-floor allocator and staffed-source readiness in the real engine", async () => {
-  const report = await runWorkforceCandidatePolicyPack({ hours: 5, seed: 72 });
+  const report = await runWorkforceCandidatePolicyPack({ hours: 8, seed: 72 });
   console.log("DEVSIM_WORKFORCE_CANDIDATE", JSON.stringify(report));
 
   assert.ok(report.modelRevision.includes("category-floor"));
   assert.equal(report.gates.find((gate) => gate.id === "WG5_PAUSED_MEANS_ZERO")?.pass, true);
   assert.equal(report.gates.find((gate) => gate.id === "WG7_OMNI_HIGH_REJECTED")?.pass, true);
+});
+
+
+test("PvE reward sweep keeps rewards subordinate to peaceful specialization and failure costs", async () => {
+  const report = await runPveRewardSweep(91);
+  console.log("DEVSIM_PVE_REWARD_SWEEP", JSON.stringify(report));
+
+  assert.equal(report.candidateVerdict, "PASS");
+  assert.ok(report.gates.every((gate) => gate.pass));
+  assert.ok(
+    (report.defenseRoi.wavesToCoverDefenseCostVsBalanced ?? Number.POSITIVE_INFINITY) > 0,
+  );
 });
