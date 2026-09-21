@@ -368,3 +368,47 @@ export function loadAuditBalanceData(): AuditBalanceData {
     tech: readYaml<AuditBalanceData["tech"]>("data/balance/v0.1/tech.yaml"),
   };
 }
+
+
+export type WorkforcePriorityLevel =
+  | "critical"
+  | "high"
+  | "normal"
+  | "low"
+  | "paused";
+
+export interface WorkforcePolicyCandidate {
+  version: string;
+  status: string;
+  model_revision: string;
+  rules: {
+    early_high_slots: number;
+    later_high_slots: number;
+    critical_reserved_for_emergency: boolean;
+    building_local_priority_scale: number;
+  };
+  semantic_levels: Record<WorkforcePriorityLevel, number>;
+  categories: Record<string, {
+    job_categories: string[];
+    default_level: WorkforcePriorityLevel;
+  }>;
+  profiles: Record<string, Record<string, WorkforcePriorityLevel>>;
+  emergency: {
+    utilities: {
+      reserve_ratio_trigger: number;
+      override_level: WorkforcePriorityLevel;
+    };
+    defense: {
+      active_combat_override_level: WorkforcePriorityLevel;
+    };
+  };
+  devsim: {
+    balanced_build_plan: string[];
+    test_hours: number;
+    rapid_switch_interval_seconds: number;
+  };
+}
+
+export function loadWorkforcePolicyCandidate(): WorkforcePolicyCandidate {
+  return readYaml<WorkforcePolicyCandidate>("data/devsim/v0.1/workforce_policy.yaml");
+}
