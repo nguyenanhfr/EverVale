@@ -673,20 +673,27 @@ export function WorldView({
       const combatState = current.combat
         ? `${current.combat.id}:${current.combat.status}:${current.combat.outcome ?? ""}:${current.combat.actors
             .filter((actor) => actor.hp > 0)
-            .map((actor) => actor.id)
+            .map((actor) => `${actor.id}:${Math.round(actor.hp)}`)
             .join(",")}`
         : "none";
+      const roadState = (current.roads ?? [])
+        .map((road) => `${road.id}:${road.from.x.toFixed(2)}:${road.from.z.toFixed(2)}:${road.to.x.toFixed(2)}:${road.to.z.toFixed(2)}`)
+        .join("|");
+      const propState = (current.props ?? [])
+        .map((prop) => `${prop.id}:${prop.definitionId}:${prop.position.x.toFixed(2)}:${prop.position.z.toFixed(2)}:${prop.rotationY.toFixed(3)}`)
+        .join("|");
       const population = Math.min(
         40,
         visualPopulationRef.current ?? current.society.population,
       );
       return [
         current.seed,
-        current.revision,
         selectedPropIdRef.current ?? "",
         population,
         buildingState,
         blockerState,
+        roadState,
+        propState,
         combatState,
       ].join("::");
     };
