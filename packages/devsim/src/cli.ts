@@ -12,7 +12,7 @@ import {
 } from "./scenarios.js";
 import type { BuildingDefinition } from "@evervale/domain/world.types";
 import { runStrategicPathPack } from "./strategic-paths.js";
-import { runWorkforcePolicyPack } from "./workforce-policy.js";
+import { runWorkforceCandidatePolicyPack, runWorkforcePolicyPack } from "./workforce-policy.js";
 import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
 import { runDefenseReadinessLab } from "./defense-readiness.js";
 
