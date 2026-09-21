@@ -1,0 +1,42 @@
+version: "0.1"
+status: "DEVSIM_CANDIDATE_ONLY"
+model_revision: "workforce-allocation-lab-v1"
+
+fixtures:
+  scarcity_12:
+    workforce: 12
+    buildings:
+      power_plant: 1
+      water_plant: 1
+      workshop: 2
+      school: 1
+      guard_post: 1
+
+  scarcity_9:
+    workforce: 9
+    buildings:
+      power_plant: 1
+      water_plant: 1
+      workshop: 1
+      school: 1
+      guard_post: 1
+
+profiles:
+  - balanced_default
+  - industry_high
+  - education_high
+  - defense_high
+  - industry_paused
+
+algorithms:
+  - current_flat_priority
+  - one_floor_then_priority
+  - tiered_category_round_robin
+
+acceptance:
+  balanced_requires_nonzero_categories:
+    - utilities
+    - industry
+    - education
+    - defense
+  paused_requires_zero_category: industry
