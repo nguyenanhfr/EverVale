@@ -657,7 +657,27 @@ export function WorldView({
       group.clear();
     };
 
+    let signatureWorld: WorldState | null = null;
+    let signatureSelectedProp: string | null = null;
+    let signaturePopulation = -1;
+    let cachedPresentationSignature = "";
+    let lastScheduleKey = "";
+
     const presentationSignature = (current: WorldState): string => {
+      const selectedProp = selectedPropIdRef.current;
+      const population = Math.min(
+        40,
+        visualPopulationRef.current ?? current.society.population,
+      );
+
+      if (
+        current === signatureWorld &&
+        selectedProp === signatureSelectedProp &&
+        population === signaturePopulation
+      ) {
+        return cachedPresentationSignature;
+      }
+
       const buildingState = current.buildings
         .map((building) => {
           const stage =
@@ -682,13 +702,13 @@ export function WorldView({
       const propState = (current.props ?? [])
         .map((prop) => `${prop.id}:${prop.definitionId}:${prop.position.x.toFixed(2)}:${prop.position.z.toFixed(2)}:${prop.rotationY.toFixed(3)}`)
         .join("|");
-      const population = Math.min(
-        40,
-        visualPopulationRef.current ?? current.society.population,
-      );
-      return [
+
+      signatureWorld = current;
+      signatureSelectedProp = selectedProp;
+      signaturePopulation = population;
+      cachedPresentationSignature = [
         current.seed,
-        selectedPropIdRef.current ?? "",
+        selectedProp ?? "",
         population,
         buildingState,
         blockerState,
@@ -696,6 +716,7 @@ export function WorldView({
         propState,
         combatState,
       ].join("::");
+      return cachedPresentationSignature;
     };
 
     const rebuild = () => {
@@ -838,6 +859,11 @@ export function WorldView({
       );
       const presentedRoles = new Set<string>();
       const presentedVisualSources = new Set<string>();
+      const detailedRoles = new Set<string>();
+      let detailedCitizenCount = 0;
+      const generatedDetailSoftBudget = presentedPopulation > 24 ? 8 : 18;
+      const generatedDetailHardBudget = presentedPopulation > 24 ? 12 : 18;
+
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
         const homeBuilding = homes[i % Math.max(1, homes.length)];
@@ -849,12 +875,23 @@ export function WorldView({
           child,
           child ? "school" : adultJobBuilding?.definitionId,
         );
+        const roleNeedsDetailedRepresentative = !detailedRoles.has(role);
+        const generatedDetailAllowed =
+          i < generatedDetailSoftBudget ||
+          (roleNeedsDetailedRepresentative &&
+            detailedCitizenCount < generatedDetailHardBudget);
+        if (generatedDetailAllowed) {
+          detailedRoles.add(role);
+          detailedCitizenCount += 1;
+        }
+
         const citizen = createCitizenVisualFromRegistry({
           worldSeed: current.seed,
           presentationSlot: i,
           child,
           role,
-          castShadow: i < 6,
+          castShadow: presentedPopulation > 24 ? i < 4 : i < 6,
+          generatedDetailAllowed,
         });
         citizen.userData.index = i;
         citizen.userData.child = child;
@@ -902,6 +939,8 @@ export function WorldView({
       host.dataset.citizenRoles = [...presentedRoles].sort().join(",");
       host.dataset.citizenRoleCount = String(presentedRoles.size);
       host.dataset.citizenVisualSources = [...presentedVisualSources].sort().join(",");
+      host.dataset.citizenDetailedCount = String(detailedCitizenCount);
+      lastScheduleKey = "";
 
       const disconnectedRoutes = citizensRef.current.filter(
         (citizen) => citizen.userData.routingConnected === false,
@@ -957,8 +996,24 @@ export function WorldView({
         lastPresentationKey = presentationKey;
       }
 
+      const scheduleKey = [
+        current.simulationSeconds,
+        current.combat?.id ?? "",
+        current.combat?.status ?? "",
+        current.combat?.elapsedSeconds ?? "",
+      ].join(":");
+      if (scheduleKey !== lastScheduleKey) {
+        citizensRef.current.forEach((mesh) => {
+          mesh.userData.scheduledPresentation = schedulePosition(current, mesh);
+        });
+        lastScheduleKey = scheduleKey;
+      }
+
       citizensRef.current.forEach((mesh) => {
-        const scheduled = schedulePosition(current, mesh);
+        const scheduled =
+          (mesh.userData.scheduledPresentation as
+            | { x: number; z: number; activity: string }
+            | undefined) ?? schedulePosition(current, mesh);
         const i = Number(mesh.userData.index);
         const offsetX = Number(mesh.userData.offsetX ?? 0);
         const offsetZ = Number(mesh.userData.offsetZ ?? 0);
@@ -966,12 +1021,13 @@ export function WorldView({
         const targetZ = scheduled.z + offsetZ;
         const dx = targetX - mesh.position.x;
         const dz = targetZ - mesh.position.z;
+        const moving = Math.hypot(dx, dz) > 0.02;
         mesh.position.x += dx * 0.12;
         mesh.position.z += dz * 0.12;
-        if (Math.hypot(dx, dz) > 0.02) {
+        if (moving) {
           mesh.rotation.y = Math.atan2(dx, dz);
         }
-        animateCitizenVisual(mesh, time, Math.hypot(dx, dz) > 0.02, i);
+        animateCitizenVisual(mesh, time, moving, i);
         mesh.userData.activity = scheduled.activity;
       });
 
