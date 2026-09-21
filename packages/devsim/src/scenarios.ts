@@ -38,6 +38,7 @@ export interface ScenarioDefinition {
   policyOverrides?: Record<string, Partial<BuildingDefinition>>;
   policyTransitions?: ScenarioPolicyTransition[];
   triggerWaveAtSeconds?: number[];
+  combatStressExtraEnemies?: Record<string, number>;
   autoRepair?: boolean;
 }
 
@@ -112,6 +113,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       guard_post: { priority: 40 },
     },
     triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   pure_scholar: {
@@ -136,6 +142,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       guard_post: { priority: 42 },
     },
     triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   pure_civic: {
@@ -160,6 +171,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       guard_post: { priority: 42 },
     },
     triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   pure_fortress: {
@@ -183,6 +199,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       restaurant: { priority: 48 },
     },
     triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   balanced_hybrid: {
@@ -199,6 +220,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       "restaurant",
     ],
     triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   omni_build: {
@@ -221,6 +247,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       "farm",
     ],
     triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   pivot_industrial_to_fortress: {
@@ -254,6 +285,11 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
       },
     ],
     triggerWaveAtSeconds: [5 * 60 * 60],
+    combatStressExtraEnemies: {
+      nibbler: 6,
+      wobble_slime: 3,
+      burrower: 2,
+    },
   },
 
   strong_multipath: {
@@ -490,8 +526,11 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
     ) {
       const action = await harness.triggerWave();
       if (action.accepted) {
+        if (definition.combatStressExtraEnemies) {
+          harness.amplifyCurrentCombat(definition.combatStressExtraEnemies);
+        }
         nextWaveIndex += 1;
-      } else if (action.error !== "COMBAT_ACTIVE") {
+      } else if (action.error !== "COMBAT_ALREADY_ACTIVE") {
         pushOnce(
           diagnostics,
           `WAVE_TRIGGER_FAILED_${nextWaveIndex}`,
