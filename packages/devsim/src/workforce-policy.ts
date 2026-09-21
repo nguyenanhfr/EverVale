@@ -5,6 +5,7 @@ import {
   type WorkforcePriorityLevel,
 } from "@evervale/balance-data";
 import type { BuildingDefinition } from "@evervale/domain/world.types";
+import type { WorkforceAllocator } from "@evervale/domain/advance-world";
 import {
   runScenario,
   type ScenarioPolicyTransition,
@@ -160,6 +161,131 @@ export function compileWorkforceProfile(
   if (!profile) return profileError(`UNKNOWN_WORKFORCE_PROFILE:${profileName}`);
   const compiled = compileWorkforceLevels(profile, options);
   return { ...compiled, profileName };
+}
+
+
+
+export interface WorkforcePolicyController {
+  allocator: WorkforceAllocator;
+  setProfile(profileName: string): void;
+  getProfile(): string;
+}
+
+export function createCategoryFloorPolicyController(
+  initialProfileName: string,
+): WorkforcePolicyController {
+  const policy = loadWorkforcePolicyCandidate();
+  let profileName = initialProfileName;
+  let profile = compileWorkforceProfile(profileName);
+
+  const categoryFor = (jobCategory: string | undefined): string | null => {
+    if (!jobCategory) return null;
+    const matches = Object.entries(policy.categories)
+      .filter(([, category]) => category.job_categories.includes(jobCategory))
+      .map(([name]) => name);
+    if (matches.length > 1) {
+      throw new Error(`WORKFORCE_CATEGORY_AMBIGUOUS:${jobCategory}`);
+    }
+    return matches[0] ?? null;
+  };
+
+  const categoryOrder = (category: string): number => {
+    const index = policy.rules.category_tie_order.indexOf(category);
+    return index >= 0 ? index : policy.rules.category_tie_order.length;
+  };
+
+  const allocator: WorkforceAllocator = (
+    population,
+    buildings,
+    definitions,
+    _combatActive,
+  ) => {
+    const totalWorkforce = Math.floor(population * 0.75);
+    let available = totalWorkforce;
+
+    const candidates = buildings
+      .filter(
+        (instance) =>
+          instance.constructionState === "COMPLETE" &&
+          instance.damageState !== "DISABLED",
+      )
+      .map((instance) => {
+        const definition = definitions[instance.definitionId];
+        if (!definition || definition.workers <= 0) return null;
+        const category = categoryFor(definition.jobCategory);
+        if (!category) return null;
+        const level = profile.categoryLevels[category]!;
+        if (level === "paused") return null;
+        const effectivePriority =
+          policy.semantic_levels[level] +
+          definition.priority * policy.rules.building_local_priority_scale;
+        return { instance, definition, category, level, effectivePriority };
+      })
+      .filter((value): value is NonNullable<typeof value> => value !== null);
+
+    const assignments = new Map<string, number>();
+    const categories = [...new Set(candidates.map((item) => item.category))]
+      .sort((a, b) => categoryOrder(a) - categoryOrder(b) || a.localeCompare(b));
+
+    for (const category of categories) {
+      if (available <= 0) break;
+      const categoryCandidates = candidates
+        .filter((item) => item.category === category)
+        .sort(
+          (a, b) =>
+            b.effectivePriority - a.effectivePriority ||
+            a.instance.id.localeCompare(b.instance.id),
+        );
+
+      if (category === "utilities") {
+        for (const item of categoryCandidates) {
+          if (available <= 0) break;
+          assignments.set(item.instance.id, 1);
+          available -= 1;
+        }
+      } else {
+        const target = categoryCandidates[0];
+        if (target) {
+          assignments.set(target.instance.id, 1);
+          available -= 1;
+        }
+      }
+    }
+
+    const ordered = [...candidates].sort(
+      (a, b) =>
+        b.effectivePriority - a.effectivePriority ||
+        categoryOrder(a.category) - categoryOrder(b.category) ||
+        a.instance.id.localeCompare(b.instance.id),
+    );
+
+    for (const item of ordered) {
+      if (available <= 0) break;
+      const current = assignments.get(item.instance.id) ?? 0;
+      const missing = item.definition.workers - current;
+      if (missing <= 0) continue;
+      const count = Math.min(available, missing);
+      assignments.set(item.instance.id, current + count);
+      available -= count;
+    }
+
+    return {
+      assignments,
+      totalWorkforce,
+      assigned: totalWorkforce - available,
+    };
+  };
+
+  return {
+    allocator,
+    setProfile(nextProfileName: string) {
+      profileName = nextProfileName;
+      profile = compileWorkforceProfile(profileName);
+    },
+    getProfile() {
+      return profileName;
+    },
+  };
 }
 
 function strategicCategoryWorkers(
