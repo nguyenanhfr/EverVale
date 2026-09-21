@@ -1,6 +1,6 @@
 # 86 — Workforce & Strategic Priority Constitution
 
-Status: **LEADERSHIP DESIGN LOCK CANDIDATE**
+Status: **DESIGN VALIDATED IN DEVSIM — RUNTIME IMPLEMENTATION PENDING**
 
 Date: 2026-09-21
 
@@ -1068,3 +1068,47 @@ After this Constitution:
 After Workforce policy is measurable:
 
 **next design item = PvE Reward Contract.**
+
+
+---
+
+# 41. Validated candidate result
+
+Measured evidence is recorded in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md` on the DevSim tooling branch / PR #12.
+
+Final candidate semantics validated over 8 simulated hours:
+
+- Balanced: Money **1634.6**, Tech **100.25**, School zero-staff **0h**
+- Industry HIGH: Money **2196.7**, Tech **0**
+- Education HIGH: Money **1375.3**, Tech **200.5**
+- Defense HIGH: Money **784.0**, readiness-sensitive combat condition loss **0** versus Balanced **18**
+- Utility emergency: staffing **2 → 4**, recovery **10 min**
+- PAUSED Industry: **0 workers**
+- Rapid switching: **12/12 deterministic**
+- Omni-HIGH: rejected by HIGH-slot validation
+
+Validated allocator direction:
+
+```
+CRITICAL / HIGH / NORMAL
+→ eligible for minimum category operating floor
+
+LOW
+→ no guaranteed floor
+
+PAUSED
+→ excluded from allocation
+
+then:
+remaining Workforce
+→ semantic priority
+→ deterministic building-local assignment
+```
+
+Balanced default Defense is **LOW**, not NORMAL.
+
+Utilities use a source-level minimum floor while floor-eligible so Power and Water cannot accidentally collapse due only to building ordering.
+
+All W0–W7 candidate gates pass.
+
+These are DevSim-proven semantics, not yet production runtime behavior.
