@@ -216,6 +216,21 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   await expect(page.getByTestId("event-summary")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("event-summary")).toContainText(/repelled|breached/i);
 
+  // Read-side combat resolution is authoritative: repeated reads must observe the
+  // same persisted event/revision instead of regenerating a projection-only event.
+  const resolvedReadA = await apiWorld(request, ownerId!);
+  const resolvedEventA = resolvedReadA.world.events.find(
+    (event: { type: string }) => event.type === "COMBAT_RESOLVED",
+  );
+  expect(resolvedEventA).toBeTruthy();
+
+  const resolvedReadB = await apiWorld(request, ownerId!);
+  const resolvedEventB = resolvedReadB.world.events.find(
+    (event: { type: string }) => event.type === "COMBAT_RESOLVED",
+  );
+  expect(resolvedEventB?.id).toBe(resolvedEventA.id);
+  expect(resolvedReadB.world.revision).toBe(resolvedReadA.world.revision);
+
   // The reference M1 wave is intentionally costly enough to exercise aftermath + repair.
   const repairButton = page.getByRole("button", { name: "Repair" }).first();
   await expect(repairButton).toBeVisible();
