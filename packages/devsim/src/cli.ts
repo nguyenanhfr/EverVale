@@ -14,6 +14,7 @@ import type { BuildingDefinition } from "@evervale/domain/world.types";
 import { runStrategicPathPack } from "./strategic-paths.js";
 import { runWorkforcePolicyPack } from "./workforce-policy.js";
 import { runWorkforceAllocatorLab } from "./workforce-allocation-lab.js";
+import { runDefenseReadinessLab } from "./defense-readiness.js";
 
 function flag(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -164,6 +165,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "defense-readiness") {
+    const seed = numberFlag(args, "--seed", 1);
+    console.log(JSON.stringify(await runDefenseReadinessLab(seed), null, 2));
+    return;
+  }
+
   if (command === "roi") {
     console.log(JSON.stringify(await buildRoiReport(), null, 2));
     return;
@@ -240,6 +247,7 @@ async function main(): Promise<void> {
     "  workforce [--hours 8] [--seed 1]",
     "  workforce-candidate [--hours 8] [--seed 1]",
     "  allocator-lab",
+    "  defense-readiness [--seed 1]",
     "  roi",
     "  graph",
     "  authority-test",
