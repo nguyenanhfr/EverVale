@@ -66,7 +66,6 @@ export default function App() {
   const [message, setMessage] = useState("Loading world...");
   const [metrics, setMetrics] = useState<RuntimeMetrics | null>(null);
   const [routingHealth, setRoutingHealth] = useState({ routed: 0, disconnected: 0 });
-  const [peopleStreetPreview, setPeopleStreetPreview] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!ownerId) return;
@@ -270,7 +269,6 @@ export default function App() {
         movingPropId={movingPropId}
         roadStart={roadStart}
         visualPopulationOverride={stressCitizens}
-        peopleStreetPreview={peopleStreetPreview}
         onGroundClick={groundClick}
         onRouting={(routed, disconnected) => setRoutingHealth({ routed, disconnected })}
         onPropSelect={(propId) => {
@@ -437,15 +435,6 @@ export default function App() {
             ? `${routingHealth.routed - routingHealth.disconnected}/${routingHealth.routed}`
             : "measuring…"}
         </div>
-
-        <button
-          className={peopleStreetPreview ? "people-preview active" : "people-preview"}
-          data-testid="people-street-preview"
-          aria-pressed={peopleStreetPreview}
-          onClick={() => setPeopleStreetPreview((value) => !value)}
-        >
-          {peopleStreetPreview ? "✓ Dân đang ngoài phố" : "👥 Preview dân ngoài phố"}
-        </button>
 
         <div
           className="perf-probe"
