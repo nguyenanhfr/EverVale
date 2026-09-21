@@ -4,6 +4,7 @@ import { buildAuthorityDriftReport, buildRoiReport, runAuthorityTamperProbe } fr
 import { runScenario } from "./scenarios.js";
 import { SimHarness } from "./core.js";
 import { runStrategicPathPack } from "./strategic-paths.js";
+import { compileWorkforceProfile, runWorkforcePolicyPack } from "./workforce-policy.js";
 
 test("healthy planner spends authoritative Money and queues real construction", async () => {
   const report = await runScenario({
@@ -170,4 +171,21 @@ test("priority transition updates existing building instances, not only future d
   );
   assert.ok(afterWorkshop);
   assert.equal(afterWorkshop.priority, 52);
+});
+
+
+test("workforce policy candidate rejects omni-HIGH before runtime", () => {
+  assert.throws(
+    () => compileWorkforceProfile("omni_high_invalid"),
+    /WORKFORCE_HIGH_SLOT_LIMIT/,
+  );
+});
+
+test("workforce policy pack measures W0-W7 without changing runtime allocator", async () => {
+  const report = await runWorkforcePolicyPack({ hours: 2, seed: 35 });
+
+  assert.equal(report.modelRevision, "workforce-strategic-priority-v1");
+  assert.ok(report.gates.some((gate) => gate.id === "WG7_OMNI_HIGH_REJECTED" && gate.pass));
+  assert.equal(report.rapidSwitch.deterministic, true);
+  assert.ok(report.scenarios.some((item) => item.id === "W0_BALANCED_DEFAULT"));
 });
