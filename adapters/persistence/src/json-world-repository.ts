@@ -130,8 +130,8 @@ export class JsonWorldRepository implements WorldRepository {
     if (await this.findByOwner(validated.ownerId)) throw new Error("WORLD_OWNER_EXISTS");
 
     const encoded = encodeWorldEnvelope(validated);
-    await this.atomicWrite(this.file(validated.worldId), encoded);
     await this.atomicWrite(this.backupFile(validated.worldId), encoded);
+    await this.atomicWrite(this.file(validated.worldId), encoded);
   }
 
   async save(
@@ -146,8 +146,8 @@ export class JsonWorldRepository implements WorldRepository {
     if (current.revision !== previousRevision) throw new Error("REVISION_CONFLICT");
 
     const encoded = encodeWorldEnvelope(validated);
-    await this.atomicWrite(this.file(validated.worldId), encoded);
     await this.atomicWrite(this.backupFile(validated.worldId), encoded);
+    await this.atomicWrite(this.file(validated.worldId), encoded);
 
     if (acceptedCommand) {
       const receipt = validateAcceptedCommandReceipt({
