@@ -22,7 +22,7 @@ jobs:
       - name: DevSim 8h economy baseline report
         run: pnpm devsim baseline --hours 8 --seed 1
       - name: DevSim strategic path Constitution report
-        run: pnpm devsim paths --hours 8 --strong-hours 12 --seed 1
+        run: pnpm devsim paths --hours 8 --long-hours 12 --strong-hours 12 --seed 1
       - name: DevSim Civic long-horizon report
         run: |
           pnpm devsim scenario pure_civic --hours 12 --seed 1
