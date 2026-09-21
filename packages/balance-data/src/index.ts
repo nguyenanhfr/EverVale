@@ -421,3 +421,26 @@ export interface WorkforcePolicyCandidate {
 export function loadWorkforcePolicyCandidate(): WorkforcePolicyCandidate {
   return readYaml<WorkforcePolicyCandidate>("data/devsim/v0.1/workforce_policy.yaml");
 }
+
+
+export interface WorkforceAllocatorLabData {
+  version: string;
+  status: string;
+  model_revision: string;
+  fixtures: Record<string, {
+    workforce: number;
+    buildings: Record<string, number>;
+  }>;
+  profiles: string[];
+  algorithms: string[];
+  acceptance: {
+    balanced_requires_nonzero_categories: string[];
+    paused_requires_zero_category: string;
+  };
+}
+
+export function loadWorkforceAllocatorLabData(): WorkforceAllocatorLabData {
+  return readYaml<WorkforceAllocatorLabData>(
+    "data/devsim/v0.1/workforce_allocator_fixtures.yaml",
+  );
+}
