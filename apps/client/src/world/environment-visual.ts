@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { resolveWorldVisualDialect, stableVisualHash } from "./visual-identity";
 
 export interface EnvironmentVisualRig {
   scene: THREE.Scene;
@@ -12,6 +13,81 @@ export interface EnvironmentVisualRig {
 function pseudo(seed:number): number {
   const x=Math.sin(seed*12.9898+78.233)*43758.5453;
   return x-Math.floor(x);
+}
+
+interface EnvironmentPalette {
+  ground: number;
+  skirt: number;
+  moundA: number;
+  moundB: number;
+  rock: number;
+  bush: number;
+  patch: number;
+  grass: number;
+  flower: number;
+  trunk: number;
+  crown: number;
+}
+
+function environmentPalette(worldSeed: string): EnvironmentPalette {
+  switch (resolveWorldVisualDialect(worldSeed).id) {
+    case "willowbrook":
+      return {
+        ground: 0x789777,
+        skirt: 0x536b59,
+        moundA: 0x5f7d65,
+        moundB: 0x6d8a70,
+        rock: 0x737c73,
+        bush: 0x496c54,
+        patch: 0x6f8f70,
+        grass: 0x557854,
+        flower: 0xcabf78,
+        trunk: 0x6b5442,
+        crown: 0x486b51,
+      };
+    case "amberfield":
+      return {
+        ground: 0x8e9c70,
+        skirt: 0x687054,
+        moundA: 0x727f5e,
+        moundB: 0x818c65,
+        rock: 0x827c6d,
+        bush: 0x66734e,
+        patch: 0x87966d,
+        grass: 0x6f7f4f,
+        flower: 0xd1a55e,
+        trunk: 0x78583d,
+        crown: 0x5f7049,
+      };
+    case "bluebell":
+      return {
+        ground: 0x7e9a86,
+        skirt: 0x5b7064,
+        moundA: 0x657f72,
+        moundB: 0x728b7b,
+        rock: 0x757d7a,
+        bush: 0x526f60,
+        patch: 0x76927d,
+        grass: 0x5d7d68,
+        flower: 0xaebfca,
+        trunk: 0x6d5543,
+        crown: 0x506f5d,
+      };
+    default:
+      return {
+        ground: 0x809d70,
+        skirt: 0x5e7457,
+        moundA: 0x667f60,
+        moundB: 0x718b66,
+        rock: 0x777b70,
+        bush: 0x536f50,
+        patch: 0x718d63,
+        grass: 0x5f7d55,
+        flower: 0xd8b76f,
+        trunk: 0x70553e,
+        crown: 0x4f6d4b,
+      };
+  }
 }
 
 function moundGeometry(radius:number,height:number,seed:number): THREE.BufferGeometry {
@@ -47,26 +123,32 @@ function moundGeometry(radius:number,height:number,seed:number): THREE.BufferGeo
   return geometry;
 }
 
-function addPerimeterLandscape(scene:THREE.Scene): void {
+function addPerimeterLandscape(scene:THREE.Scene, worldSeed: string): void {
   const group=new THREE.Group();
   group.userData.environmentVisual=true;
-  const moundMat=new THREE.MeshStandardMaterial({color:0x667f60,roughness:1,flatShading:true});
-  const moundMat2=new THREE.MeshStandardMaterial({color:0x718b66,roughness:1,flatShading:true});
+  const palette=environmentPalette(worldSeed);
+  const seedOffset=stableVisualHash(worldSeed)%10000;
+  const moundMat=new THREE.MeshStandardMaterial({color:palette.moundA,roughness:1,flatShading:true});
+  const moundMat2=new THREE.MeshStandardMaterial({color:palette.moundB,roughness:1,flatShading:true});
   const placements=[
     [-50,-30,15,8,1],[-49,2,13,7,2],[-48,34,16,9,3],
     [49,-32,16,9,4],[49,2,13,7,5],[48,35,16,8,6],
     [-30,50,15,7,7],[0,50,18,8,8],[31,49,16,7,9],
   ] as const;
   placements.forEach(([x,z,r,h,seed],i)=>{
-    const mound=new THREE.Mesh(moundGeometry(r,h,seed),i%2?moundMat:moundMat2);
-    mound.position.set(x,-0.08,z);
+    const mound=new THREE.Mesh(moundGeometry(r,h,seed+seedOffset),i%2?moundMat:moundMat2);
+    mound.position.set(
+      x+(pseudo(seedOffset+i*13)-0.5)*2.8,
+      -0.08,
+      z+(pseudo(seedOffset+i*19)-0.5)*2.8,
+    );
     mound.receiveShadow=true;
     mound.castShadow=i%3===0;
     group.add(mound);
   });
 
   const rockGeo=new THREE.DodecahedronGeometry(0.72,0);
-  const rockMat=new THREE.MeshStandardMaterial({color:0x777b70,roughness:1,flatShading:true});
+  const rockMat=new THREE.MeshStandardMaterial({color:palette.rock,roughness:1,flatShading:true});
   const rocks=new THREE.InstancedMesh(rockGeo,rockMat,18);
   const dummy=new THREE.Object3D();
   for(let i=0;i<18;i+=1) {
@@ -84,7 +166,7 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
   group.add(rocks);
 
   const bushGeo=new THREE.DodecahedronGeometry(0.68,0);
-  const bushMat=new THREE.MeshStandardMaterial({color:0x536f50,roughness:1,flatShading:true});
+  const bushMat=new THREE.MeshStandardMaterial({color:palette.bush,roughness:1,flatShading:true});
   const bushes=new THREE.InstancedMesh(bushGeo,bushMat,24);
   for(let i=0;i<24;i+=1) {
     const edge=i%4;
@@ -105,7 +187,7 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
 
   const patchGeo=new THREE.CircleGeometry(5.5,10);
   const patchMat=new THREE.MeshStandardMaterial({
-    color:0x718d63,
+    color:palette.patch,
     roughness:1,
     polygonOffset:true,
     polygonOffsetFactor:-1,
@@ -125,25 +207,25 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
 
   const grassBladeGeo = new THREE.ConeGeometry(0.08, 0.55, 4);
   const grassBladeMat = new THREE.MeshStandardMaterial({
-    color: 0x5f7d55,
+    color: palette.grass,
     roughness: 1,
     flatShading: true,
   });
   const grass = new THREE.InstancedMesh(grassBladeGeo, grassBladeMat, 120);
   for (let i = 0; i < 120; i += 1) {
-    const angle = pseudo(i + 500) * Math.PI * 2;
-    const radius = 29 + pseudo(i + 520) * 19;
+    const angle = pseudo(seedOffset + i + 500) * Math.PI * 2;
+    const radius = 29 + pseudo(seedOffset + i + 520) * 19;
     dummy.position.set(
       Math.cos(angle) * radius,
       0.24,
       Math.sin(angle) * radius,
     );
     dummy.rotation.set(
-      (pseudo(i + 540) - 0.5) * 0.16,
-      pseudo(i + 560) * Math.PI * 2,
-      (pseudo(i + 580) - 0.5) * 0.18,
+      (pseudo(seedOffset + i + 540) - 0.5) * 0.16,
+      pseudo(seedOffset + i + 560) * Math.PI * 2,
+      (pseudo(seedOffset + i + 580) - 0.5) * 0.18,
     );
-    const s = 0.7 + pseudo(i + 600) * 0.85;
+    const s = 0.7 + pseudo(seedOffset + i + 600) * 0.85;
     dummy.scale.set(s, s, s);
     dummy.updateMatrix();
     grass.setMatrixAt(i, dummy.matrix);
@@ -155,21 +237,21 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
 
   const flowerGeo = new THREE.OctahedronGeometry(0.1, 0);
   const flowerMat = new THREE.MeshStandardMaterial({
-    color: 0xd8b76f,
+    color: palette.flower,
     roughness: 0.95,
     flatShading: true,
   });
   const flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, 48);
   for (let i = 0; i < 48; i += 1) {
-    const angle = pseudo(i + 700) * Math.PI * 2;
-    const radius = 27 + pseudo(i + 720) * 17;
+    const angle = pseudo(seedOffset + i + 700) * Math.PI * 2;
+    const radius = 27 + pseudo(seedOffset + i + 720) * 17;
     dummy.position.set(
       Math.cos(angle) * radius,
-      0.34 + pseudo(i + 740) * 0.08,
+      0.34 + pseudo(seedOffset + i + 740) * 0.08,
       Math.sin(angle) * radius,
     );
-    dummy.rotation.set(0, pseudo(i + 760) * Math.PI * 2, 0);
-    const s = 0.7 + pseudo(i + 780) * 0.55;
+    dummy.rotation.set(0, pseudo(seedOffset + i + 760) * Math.PI * 2, 0);
+    const s = 0.7 + pseudo(seedOffset + i + 780) * 0.55;
     dummy.scale.setScalar(s);
     dummy.updateMatrix();
     flowers.setMatrixAt(i, dummy.matrix);
@@ -179,24 +261,24 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
   group.add(flowers);
 
   const trunkGeo = new THREE.CylinderGeometry(0.16, 0.24, 2.15, 6);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x70553e, roughness: 1 });
+  const trunkMat = new THREE.MeshStandardMaterial({ color: palette.trunk, roughness: 1 });
   const treeTrunks = new THREE.InstancedMesh(trunkGeo, trunkMat, 22);
   const crownGeo = new THREE.DodecahedronGeometry(0.82, 0);
   const crownMat = new THREE.MeshStandardMaterial({
-    color: 0x4f6d4b,
+    color: palette.crown,
     roughness: 1,
     flatShading: true,
   });
   const treeCrowns = new THREE.InstancedMesh(crownGeo, crownMat, 22);
   for (let i = 0; i < 22; i += 1) {
-    const angle = (i / 22) * Math.PI * 2 + (pseudo(i + 820) - 0.5) * 0.2;
-    const radius = 43 + pseudo(i + 840) * 7;
+    const angle = (i / 22) * Math.PI * 2 + (pseudo(seedOffset + i + 820) - 0.5) * 0.2;
+    const radius = 43 + pseudo(seedOffset + i + 840) * 7;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
-    const s = 0.78 + pseudo(i + 860) * 0.65;
+    const s = 0.78 + pseudo(seedOffset + i + 860) * 0.65;
 
     dummy.position.set(x, 1.05 * s, z);
-    dummy.rotation.set(0, pseudo(i + 880) * Math.PI * 2, 0);
+    dummy.rotation.set(0, pseudo(seedOffset + i + 880) * Math.PI * 2, 0);
     dummy.scale.set(s, s, s);
     dummy.updateMatrix();
     treeTrunks.setMatrixAt(i, dummy.matrix);
@@ -204,8 +286,8 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
     dummy.position.set(x, 2.55 * s, z);
     dummy.rotation.set(
       0,
-      pseudo(i + 900) * Math.PI * 2,
-      (pseudo(i + 920) - 0.5) * 0.12,
+      pseudo(seedOffset + i + 900) * Math.PI * 2,
+      (pseudo(seedOffset + i + 920) - 0.5) * 0.12,
     );
     dummy.scale.set(1.05 * s, 0.88 * s, 1.05 * s);
     dummy.updateMatrix();
@@ -225,6 +307,7 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
 export function createEnvironmentVisuals(
   scene:THREE.Scene,
   renderer:THREE.WebGLRenderer,
+  worldSeed: string,
 ): EnvironmentVisualRig {
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -255,10 +338,11 @@ export function createEnvironmentVisuals(
   scene.add(sun);
   scene.add(sun.target);
 
+  const environmentColors=environmentPalette(worldSeed);
   const ground=new THREE.Mesh(
     new THREE.PlaneGeometry(110,110,12,12),
     new THREE.MeshStandardMaterial({
-      color:0x809d70,
+      color:environmentColors.ground,
       roughness:1,
       metalness:0,
     }),
@@ -270,13 +354,13 @@ export function createEnvironmentVisuals(
 
   const skirt=new THREE.Mesh(
     new THREE.BoxGeometry(112,1.4,112),
-    new THREE.MeshStandardMaterial({color:0x5e7457,roughness:1}),
+    new THREE.MeshStandardMaterial({color:environmentColors.skirt,roughness:1}),
   );
   skirt.position.y=-0.74;
   skirt.receiveShadow=true;
   scene.add(skirt);
 
-  addPerimeterLandscape(scene);
+  addPerimeterLandscape(scene,worldSeed);
   return {scene,ground,sun,hemisphere,fog,renderer};
 }
 
