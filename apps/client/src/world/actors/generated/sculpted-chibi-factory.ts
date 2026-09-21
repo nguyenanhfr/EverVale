@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { CitizenVisualFactoryContext } from "../citizen-visual-registry";
 
 export type SculptedHeadwear = "none" | "hard_hat" | "utility_cap";
@@ -25,6 +26,73 @@ export interface SculptedChibiSpec {
 }
 
 const materialCache = new Map<string, THREE.MeshStandardMaterial>();
+
+const sculptedVertexMaterial = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  roughness: 0.82,
+  metalness: 0,
+});
+sculptedVertexMaterial.userData.sharedMaterial = true;
+
+function mergeColoredMeshes(
+  group: THREE.Group,
+  name: string,
+): THREE.Mesh | null {
+  const geometries: THREE.BufferGeometry[] = [];
+  const meshes = group.children.filter(
+    (child): child is THREE.Mesh => (child as THREE.Mesh).isMesh,
+  );
+
+  for (const source of meshes) {
+    source.updateMatrix();
+    const geometry = source.geometry.index
+      ? source.geometry.toNonIndexed()
+      : source.geometry.clone();
+    geometry.applyMatrix4(source.matrix);
+
+    const sourceMaterial = Array.isArray(source.material)
+      ? source.material[0]!
+      : source.material;
+    const sourceColor =
+      sourceMaterial instanceof THREE.MeshStandardMaterial ||
+      sourceMaterial instanceof THREE.MeshBasicMaterial
+        ? sourceMaterial.color
+        : new THREE.Color(0xffffff);
+
+    const count = geometry.getAttribute("position").count;
+    const colors = new Float32Array(count * 3);
+    for (let i = 0; i < count; i += 1) {
+      colors[i * 3] = sourceColor.r;
+      colors[i * 3 + 1] = sourceColor.g;
+      colors[i * 3 + 2] = sourceColor.b;
+    }
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geometries.push(geometry);
+
+    group.remove(source);
+    source.geometry.dispose();
+  }
+
+  if (geometries.length === 0) return null;
+  const merged =
+    geometries.length === 1
+      ? geometries[0]!
+      : mergeGeometries(geometries, false);
+  if (!merged) {
+    geometries.forEach((geometry) => geometry.dispose());
+    return null;
+  }
+  if (geometries.length > 1) {
+    geometries.forEach((geometry) => geometry.dispose());
+  }
+
+  const mesh = new THREE.Mesh(merged, sculptedVertexMaterial);
+  mesh.name = name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
 
 function mat(color: number, roughness = 0.82): THREE.MeshStandardMaterial {
   const key = `${color.toString(16)}:${roughness}`;
@@ -484,6 +552,10 @@ function buildArm(
     });
   }
 
+  mergeColoredMeshes(
+    pivot,
+    side < 0 ? "arm_left_sculpted" : "arm_right_sculpted",
+  );
   return pivot;
 }
 
@@ -530,6 +602,8 @@ export function createSculptedChibiCharacter(
   addHair(root, spec);
   addFace(root, spec);
   addHeadwear(root, spec);
+
+  mergeColoredMeshes(root, "body_sculpted");
 
   const leftArm = buildArm(spec, -1);
   const rightArm = buildArm(spec, 1);
