@@ -6,6 +6,8 @@ import { createHouseSmallVisual } from "./house-small-visual";
 import { createTownCenterVisual } from "./town-center-visual";
 import { createWorkshopVisual } from "./workshop-visual";
 import { createPowerPlantVisual, createWaterPlantVisual } from "./utility-visual";
+import { createSchoolVisual, createGuardPostVisual } from "./civic-visual";
+import { createParkVisual } from "./park-visual";
 import { addBuildingGroundContact } from "./building-contact-visual";
 
 export function createBuildingVisualFromRegistry(
@@ -29,6 +31,15 @@ export function createBuildingVisualFromRegistry(
       break;
     case "water_plant":
       visual = createWaterPlantVisual(building, meta, identity);
+      break;
+    case "school":
+      visual = createSchoolVisual(building, meta, identity);
+      break;
+    case "park":
+      visual = createParkVisual(building, meta, identity);
+      break;
+    case "guard_post":
+      visual = createGuardPostVisual(building, meta, identity);
       break;
     default:
       visual = createLegacyBuildingVisual(building, meta);
