@@ -168,6 +168,10 @@ export function compileWorkforceProfile(
 export interface WorkforcePolicyController {
   allocator: WorkforceAllocator;
   setProfile(profileName: string): void;
+  setLevels(
+    levels: Record<string, WorkforcePriorityLevel>,
+    options?: CompileOptions,
+  ): void;
   getProfile(): string;
 }
 
@@ -281,6 +285,10 @@ export function createCategoryFloorPolicyController(
     setProfile(nextProfileName: string) {
       profileName = nextProfileName;
       profile = compileWorkforceProfile(profileName);
+    },
+    setLevels(levels: Record<string, WorkforcePriorityLevel>, options: CompileOptions = {}) {
+      profileName = "custom";
+      profile = compileWorkforceLevels(levels, options);
     },
     getProfile() {
       return profileName;
