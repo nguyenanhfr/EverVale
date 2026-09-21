@@ -181,7 +181,7 @@ export class SimHarness {
   readonly defenseDeployments: DefenseDeploymentRecord[] = [];
 
   private readonly placementCandidates: Array<{ x: number; z: number }>;
-  private readonly defenseReadiness?: DefenseReadinessOverlay;
+  private readonly defenseReadiness: DefenseReadinessOverlay | undefined;
   private combatFixtureCounter = 0;
 
   readonly seed: number;
