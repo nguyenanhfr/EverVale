@@ -46,8 +46,9 @@ root.innerHTML = `
   </div>
 `;
 
-const shell = root.querySelector<HTMLDivElement>(".people-demo-shell");
-if (!shell) throw new Error("PEOPLE_DEMO_SHELL_MISSING");
+const shellQuery = root.querySelector<HTMLDivElement>(".people-demo-shell");
+if (!shellQuery) throw new Error("PEOPLE_DEMO_SHELL_MISSING");
+const shell: HTMLDivElement = shellQuery;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xd8e2d2);
