@@ -1,0 +1,24 @@
+version: "0.1"
+status: "DEVSIM_CANDIDATE_ONLY"
+model_revision: "defense-readiness-v1"
+
+guard:
+  source_building: guard_post
+  unit_definition: guard
+  slots_per_source: 2
+  requires_staffed_source: true
+  capacity_rule: floor_proportional
+
+town_warden:
+  always_available: true
+  baseline_count: 2
+
+validation:
+  zero_staff_expected_guard_capacity: 0
+  half_staff_expected_guard_capacity: 1
+  full_staff_expected_guard_capacity: 2
+
+gates:
+  full_staff_condition_loss_must_be_lower_than_zero: true
+  defense_high_condition_loss_must_be_lower_than_balanced: true
+  deterministic_replay_required: true
