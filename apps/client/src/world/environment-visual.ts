@@ -7,7 +7,36 @@ export interface EnvironmentVisualRig {
   hemisphere: THREE.HemisphereLight;
   fog: THREE.Fog;
   renderer: THREE.WebGLRenderer;
+  skyMaterial: THREE.ShaderMaterial;
+  sunDisc: THREE.Sprite;
+  moonDisc: THREE.Sprite;
+  stars: THREE.Points;
+  lastLightingDay: number;
+  lastNightFactor: number;
 }
+
+const DAY_SKY=new THREE.Color(0xbfd4c4);
+const DUSK_SKY=new THREE.Color(0xd5ad8a);
+const NIGHT_SKY=new THREE.Color(0x52677a);
+const TOP_NIGHT=new THREE.Color(0x34495f);
+const TOP_DUSK=new THREE.Color(0x9a7180);
+const TOP_DAY=new THREE.Color(0x7fb5d0);
+const BOTTOM_NIGHT=new THREE.Color(0x647387);
+const BOTTOM_DUSK=new THREE.Color(0xe0aa80);
+const BOTTOM_DAY=new THREE.Color(0xd2dfbd);
+const HEMI_NIGHT=new THREE.Color(0xaec4d2);
+const HEMI_DAY=new THREE.Color(0xffefd1);
+const GROUND_NIGHT=new THREE.Color(0x435363);
+const GROUND_DAY=new THREE.Color(0x64725f);
+const SUN_DUSK=new THREE.Color(0xffa45f);
+const SUN_DAY=new THREE.Color(0xfff0ce);
+const skyScratch=new THREE.Color();
+const topScratch=new THREE.Color();
+const bottomScratch=new THREE.Color();
+const hemiScratch=new THREE.Color();
+const groundScratch=new THREE.Color();
+const sunScratch=new THREE.Color();
+const celestialScratch=new THREE.Vector3();
 
 function pseudo(seed:number): number {
   const x=Math.sin(seed*12.9898+78.233)*43758.5453;
@@ -126,17 +155,107 @@ function addPerimeterLandscape(scene:THREE.Scene): void {
   scene.add(group);
 }
 
+function createSkyVisuals(scene: THREE.Scene): {
+  skyMaterial: THREE.ShaderMaterial;
+  sunDisc: THREE.Sprite;
+  moonDisc: THREE.Sprite;
+  stars: THREE.Points;
+} {
+  const skyMaterial = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      topColor: { value: new THREE.Color(0x8fb9c8) },
+      bottomColor: { value: new THREE.Color(0xc7d5b8) },
+    },
+    vertexShader: `
+      varying float vSkyY;
+      void main() {
+        vSkyY = normalize(position).y;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 topColor;
+      uniform vec3 bottomColor;
+      varying float vSkyY;
+      void main() {
+        float h = smoothstep(-0.28, 0.92, vSkyY);
+        h = pow(h, 0.72);
+        gl_FragColor = vec4(mix(bottomColor, topColor, h), 1.0);
+      }
+    `,
+  });
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(240, 24, 14), skyMaterial);
+  skyDome.frustumCulled = false;
+  scene.add(skyDome);
+
+  const sunMaterial = new THREE.SpriteMaterial({
+    color: 0xffe2a6,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const sunDisc = new THREE.Sprite(sunMaterial);
+  sunDisc.scale.set(13,13,1);
+  scene.add(sunDisc);
+
+  const moonMaterial = new THREE.SpriteMaterial({
+    color: 0xc9d8e8,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const moonDisc = new THREE.Sprite(moonMaterial);
+  moonDisc.scale.set(7.5,7.5,1);
+  scene.add(moonDisc);
+
+  const starPositions:number[]=[];
+  for(let i=0;i<110;i+=1) {
+    const u=(i*0.61803398875)%1;
+    const v=((i*37)%113)/113;
+    const theta=u*Math.PI*2;
+    const phi=0.18+v*Math.PI*0.36;
+    const r=205;
+    starPositions.push(
+      Math.cos(theta)*Math.sin(phi)*r,
+      Math.cos(phi)*r,
+      Math.sin(theta)*Math.sin(phi)*r,
+    );
+  }
+  const starGeometry=new THREE.BufferGeometry();
+  starGeometry.setAttribute("position",new THREE.Float32BufferAttribute(starPositions,3));
+  const starMaterial=new THREE.PointsMaterial({
+    color:0xf2e8d0,
+    size:0.68,
+    transparent:true,
+    opacity:0,
+    depthWrite:false,
+    depthTest:false,
+  });
+  const stars=new THREE.Points(starGeometry,starMaterial);
+  stars.frustumCulled=false;
+  scene.add(stars);
+
+  return {skyMaterial,sunDisc,moonDisc,stars};
+}
+
 export function createEnvironmentVisuals(
   scene:THREE.Scene,
   renderer:THREE.WebGLRenderer,
 ): EnvironmentVisualRig {
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate=false;
+  renderer.shadowMap.needsUpdate=true;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.05;
 
   const sky=new THREE.Color(0xbfd1c1);
   scene.background=sky;
+  const skyVisuals=createSkyVisuals(scene);
   const fog=new THREE.Fog(sky,86,178);
   scene.fog=fog;
 
@@ -158,10 +277,25 @@ export function createEnvironmentVisuals(
   scene.add(sun);
   scene.add(sun.target);
 
+  const groundGeometry=new THREE.PlaneGeometry(110,110,22,22);
+  const groundColors:number[]=[];
+  const position=groundGeometry.getAttribute("position");
+  const baseColor=new THREE.Color(0x809d70);
+  const dryColor=new THREE.Color(0x91a878);
+  const deepColor=new THREE.Color(0x708b64);
+  for(let i=0;i<position.count;i+=1) {
+    const x=position.getX(i);
+    const y=position.getY(i);
+    const wave=Math.sin(x*0.17)+Math.cos(y*0.13)+Math.sin((x+y)*0.075);
+    const mix=Math.max(0,Math.min(1,0.5+wave*0.11));
+    const color=deepColor.clone().lerp(baseColor,mix).lerp(dryColor,Math.max(0,wave)*0.055);
+    groundColors.push(color.r,color.g,color.b);
+  }
+  groundGeometry.setAttribute("color",new THREE.Float32BufferAttribute(groundColors,3));
   const ground=new THREE.Mesh(
-    new THREE.PlaneGeometry(110,110,12,12),
+    groundGeometry,
     new THREE.MeshStandardMaterial({
-      color:0x809d70,
+      vertexColors:true,
       roughness:1,
       metalness:0,
     }),
@@ -180,7 +314,17 @@ export function createEnvironmentVisuals(
   scene.add(skirt);
 
   addPerimeterLandscape(scene);
-  return {scene,ground,sun,hemisphere,fog,renderer};
+  return {
+    scene,
+    ground,
+    sun,
+    hemisphere,
+    fog,
+    renderer,
+    ...skyVisuals,
+    lastLightingDay: Number.NaN,
+    lastNightFactor: 0,
+  };
 }
 
 function smoothstep(a:number,b:number,x:number): number {
@@ -192,26 +336,42 @@ export function updateEnvironmentLighting(
   rig:EnvironmentVisualRig,
   day:number,
 ): number {
+  if (day === rig.lastLightingDay) return rig.lastNightFactor;
+  rig.lastLightingDay=day;
+
   const angle=(day-0.25)*Math.PI*2;
   const elevation=Math.sin(angle);
   const daylight=smoothstep(-0.12,0.18,elevation);
   const twilight=1-Math.min(1,Math.abs(elevation)/0.42);
   const nightFactor=1-daylight;
 
-  const daySky=new THREE.Color(0xbfd4c4);
-  const duskSky=new THREE.Color(0xd5ad8a);
-  const nightSky=new THREE.Color(0x52677a);
-  const sky=nightSky.clone().lerp(duskSky,Math.max(daylight*0.45,twilight*0.65)).lerp(daySky,daylight);
+  skyScratch.copy(NIGHT_SKY).lerp(DUSK_SKY,Math.max(daylight*0.45,twilight*0.65)).lerp(DAY_SKY,daylight);
+  topScratch.copy(TOP_NIGHT).lerp(TOP_DUSK,twilight*0.72).lerp(TOP_DAY,daylight);
+  bottomScratch.copy(BOTTOM_NIGHT).lerp(BOTTOM_DUSK,twilight*0.85).lerp(BOTTOM_DAY,daylight);
+  const topUniform=rig.skyMaterial.uniforms["topColor"];
+  const bottomUniform=rig.skyMaterial.uniforms["bottomColor"];
+  if(topUniform) (topUniform.value as THREE.Color).copy(topScratch);
+  if(bottomUniform) (bottomUniform.value as THREE.Color).copy(bottomScratch);
   rig.renderer.toneMappingExposure=0.98+daylight*0.16+twilight*0.04;
-  rig.fog.color.copy(sky);
-  if (rig.scene.background instanceof THREE.Color) rig.scene.background.copy(sky);
+  rig.fog.color.copy(skyScratch);
+  if (rig.scene.background instanceof THREE.Color) rig.scene.background.copy(skyScratch);
 
   rig.sun.intensity=0.3+daylight*2.3+twilight*0.32;
   rig.hemisphere.intensity=0.82+daylight*1.05;
-  rig.hemisphere.color.copy(new THREE.Color(0xaec4d2).lerp(new THREE.Color(0xffefd1),daylight));
-  rig.hemisphere.groundColor.copy(new THREE.Color(0x435363).lerp(new THREE.Color(0x64725f),daylight));
-  rig.sun.color.copy(new THREE.Color(0xffa45f).lerp(new THREE.Color(0xfff0ce),daylight));
+  rig.hemisphere.color.copy(hemiScratch.copy(HEMI_NIGHT).lerp(HEMI_DAY,daylight));
+  rig.hemisphere.groundColor.copy(groundScratch.copy(GROUND_NIGHT).lerp(GROUND_DAY,daylight));
+  rig.sun.color.copy(sunScratch.copy(SUN_DUSK).lerp(SUN_DAY,daylight));
   rig.sun.position.set(Math.cos(angle)*52,Math.max(10,18+Math.max(0,elevation)*52),Math.sin(angle)*42);
   rig.sun.target.position.set(0,0,0);
+
+  celestialScratch.set(Math.cos(angle),Math.sin(angle),Math.sin(angle*0.82)).normalize();
+  rig.sunDisc.position.copy(celestialScratch).multiplyScalar(128);
+  rig.moonDisc.position.copy(celestialScratch).multiplyScalar(-118);
+  (rig.sunDisc.material as THREE.SpriteMaterial).opacity=0.16+daylight*0.68+twilight*0.18;
+  (rig.moonDisc.material as THREE.SpriteMaterial).opacity=Math.max(0,nightFactor*0.72-twilight*0.22);
+  const starMaterial=rig.stars.material as THREE.PointsMaterial;
+  starMaterial.opacity=Math.max(0,Math.min(0.72,nightFactor*0.88-twilight*0.32));
+  rig.stars.rotation.y=day*Math.PI*0.35;
+  rig.lastNightFactor=nightFactor;
   return nightFactor;
 }

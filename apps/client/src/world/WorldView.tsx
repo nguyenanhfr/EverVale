@@ -7,6 +7,10 @@ import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protoc
 import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisual } from "./building-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
+import { createRoadVisual } from "./road-visual";
+import { createBlockerVisual } from "./blocker-visual";
+import { createAmbientWorldVisual, updateAmbientVisuals, type AmbientVisualRig } from "./ambient-visual";
+import { createCitizenVisual, createDogVisual, updateCitizenVisual, updateDogVisual } from "./actor-visual";
 import {
   constructionVisualState,
   createBuilderObject,
@@ -39,55 +43,6 @@ interface Props {
   onPropSelect(propId: string | null): void;
   onRouting?(routedCitizens: number, disconnectedRoutes: number): void;
   onMetrics: ((metrics: RuntimeMetrics) => void) | undefined;
-}
-
-function makeBlocker(blocker: WorldState["blockers"][number]): THREE.Object3D {
-  const group = new THREE.Group();
-
-  if (blocker.definitionId === "fallen_tree") {
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.55, 6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x795b3d, roughness: 1 }),
-    );
-    trunk.rotation.z = Math.PI / 2;
-    trunk.position.y = 0.55;
-    trunk.castShadow = true;
-    group.add(trunk);
-    for (const x of [-2.4, 2.4]) {
-      const crown = new THREE.Mesh(
-        new THREE.ConeGeometry(1.3, 2.2, 7),
-        new THREE.MeshStandardMaterial({ color: 0x526f49, roughness: 1 }),
-      );
-      crown.position.set(x, 1.1, 0);
-      crown.castShadow = true;
-      group.add(crown);
-    }
-  } else {
-    for (let i = 0; i < 5; i += 1) {
-      const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.7 + (i % 3) * 0.18, 0),
-        new THREE.MeshStandardMaterial({ color: 0x77776e, roughness: 1 }),
-      );
-      rock.scale.y = 0.7;
-      rock.position.set((i % 3) * 1.2 - 1.2, 0.5, Math.floor(i / 3) * 1.2 - 0.5);
-      rock.rotation.set(i * 0.4, i * 0.7, 0);
-      rock.castShadow = true;
-      group.add(rock);
-    }
-  }
-
-  if (blocker.state === "CLEARING") {
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(2.2, 0.12, 6, 24),
-      new THREE.MeshBasicMaterial({ color: 0xd7aa54 }),
-    );
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.12;
-    group.add(ring);
-  }
-
-  group.position.set(blocker.position.x, 0, blocker.position.z);
-  return group;
 }
 
 function pointSegmentDistance(
@@ -192,7 +147,7 @@ function routePoint(
 
 function schedulePosition(
   current: WorldState,
-  mesh: THREE.Mesh,
+  mesh: THREE.Object3D,
 ): { x: number; z: number; activity: string } {
   const home = mesh.userData.home as {x:number;z:number};
   const work = mesh.userData.work as {x:number;z:number};
@@ -281,7 +236,7 @@ export function WorldView({
   const routingRef = useRef(onRouting);
   const roadStartRef = useRef(roadStart);
   const visualPopulationRef = useRef(visualPopulationOverride);
-  const citizensRef = useRef<THREE.Mesh[]>([]);
+  const citizensRef = useRef<THREE.Group[]>([]);
   const animalsRef = useRef<THREE.Group[]>([]);
   const propWaterRef = useRef<THREE.Mesh[]>([]);
   const propGlowRef = useRef<THREE.Mesh[]>([]);
@@ -315,18 +270,25 @@ export function WorldView({
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
-    camera.position.set(48, 55, 58);
+    const camera = new THREE.PerspectiveCamera(39, 1, 0.1, 400);
+    camera.position.set(50, 57, 61);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
+    controls.target.set(0, 1.15, 0);
     controls.enableDamping = true;
+    controls.dampingFactor = 0.075;
+    controls.rotateSpeed = 0.55;
+    controls.zoomSpeed = 0.82;
+    controls.panSpeed = 0.72;
+    controls.screenSpacePanning = false;
+    controls.zoomToCursor = true;
     controls.maxPolarAngle = Math.PI * 0.47;
-    controls.minDistance = 22;
+    controls.minDistance = 20;
     controls.maxDistance = 130;
 
     const environment = createEnvironmentVisuals(scene, renderer);
@@ -346,6 +308,7 @@ export function WorldView({
 
     const dynamic = new THREE.Group();
     scene.add(dynamic);
+    let ambientVisual: AmbientVisualRig | null = null;
 
     const preview = new THREE.Group();
     scene.add(preview);
@@ -580,16 +543,63 @@ export function WorldView({
             building.constructionState === "BUILDING"
               ? constructionVisualState(building).stage
               : "COMPLETE";
-          return `${building.id}:${building.constructionState}:${stage}:${building.damageState}`;
+          return [
+            building.id,
+            building.definitionId,
+            building.position.x,
+            building.position.z,
+            building.rotationY,
+            building.constructionState,
+            stage,
+            building.damageState,
+          ].join(":");
         })
         .join("|");
       const blockerState = (current.blockers ?? [])
-        .map((blocker) => `${blocker.id}:${blocker.state}`)
+        .map((blocker) =>
+          [
+            blocker.id,
+            blocker.definitionId,
+            blocker.position.x,
+            blocker.position.z,
+            blocker.state,
+          ].join(":")
+        )
+        .join("|");
+      const roadState = (current.roads ?? [])
+        .map((road) =>
+          [
+            road.id,
+            road.type,
+            road.from.x,
+            road.from.z,
+            road.to.x,
+            road.to.z,
+          ].join(":")
+        )
+        .join("|");
+      const propState = (current.props ?? [])
+        .map((prop) =>
+          [
+            prop.id,
+            prop.definitionId,
+            prop.position.x,
+            prop.position.z,
+            prop.rotationY,
+          ].join(":")
+        )
         .join("|");
       const combatState = current.combat
         ? `${current.combat.id}:${current.combat.status}:${current.combat.outcome ?? ""}:${current.combat.actors
             .filter((actor) => actor.hp > 0)
-            .map((actor) => actor.id)
+            .map((actor) =>
+              [
+                actor.id,
+                Math.ceil(actor.hp),
+                actor.position.x,
+                actor.position.z,
+              ].join(":")
+            )
             .join(",")}`
         : "none";
       const population = Math.min(
@@ -597,11 +607,12 @@ export function WorldView({
         visualPopulationRef.current ?? current.society.population,
       );
       return [
-        current.revision,
         selectedPropIdRef.current ?? "",
         population,
         buildingState,
         blockerState,
+        roadState,
+        propState,
         combatState,
       ].join("::");
     };
@@ -617,20 +628,10 @@ export function WorldView({
       const current = worldRef.current;
 
       for (const road of current.roads ?? []) {
-        const dx = road.to.x - road.from.x;
-        const dz = road.to.z - road.from.z;
-        const length = Math.hypot(dx, dz);
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(2.4, 0.08, length),
-          new THREE.MeshStandardMaterial({ color: 0x9b8b74, roughness: 1 }),
-        );
-        mesh.position.set((road.from.x + road.to.x) / 2, 0.05, (road.from.z + road.to.z) / 2);
-        mesh.rotation.y = Math.atan2(dx, dz);
-        mesh.receiveShadow = true;
-        dynamic.add(mesh);
+        dynamic.add(createRoadVisual(road, `${current.seed}:${road.id}`));
       }
 
-      (current.blockers ?? []).forEach((blocker) => dynamic.add(makeBlocker(blocker)));
+      (current.blockers ?? []).forEach((blocker) => dynamic.add(createBlockerVisual(blocker)));
 
       const activeConstruction = current.buildings.filter(
         (building) => building.constructionState === "BUILDING",
@@ -649,6 +650,9 @@ export function WorldView({
         });
         dynamic.add(visual);
       });
+
+      ambientVisual = createAmbientWorldVisual(current, buildCatalogRef.current);
+      dynamic.add(ambientVisual.group);
 
       host.dataset.activeConstruction = String(activeConstruction.length);
       if (activeConstruction[0]) {
@@ -739,11 +743,7 @@ export function WorldView({
       );
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const citizen = new THREE.Mesh(
-          new THREE.CapsuleGeometry(child ? 0.25 : 0.32, child ? 0.55 : 0.8, 4, 8),
-          new THREE.MeshStandardMaterial({ color: child ? 0xd7a86e : 0x6f7f8d, roughness: 0.92 }),
-        );
-        citizen.castShadow = i < 18;
+        const citizen = createCitizenVisual(i, child, i < 18);
         citizen.userData.index = i;
         citizen.userData.child = child;
         const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
@@ -790,22 +790,10 @@ export function WorldView({
       host.dataset.disconnectedRoutes = String(disconnectedRoutes);
       host.dataset.routedCitizens = String(citizensRef.current.length);
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
+      renderer.shadowMap.needsUpdate = true;
 
       if (homes.length > 0) {
-        const dog = new THREE.Group();
-        const fur = new THREE.MeshStandardMaterial({ color: 0x9a6a45, roughness: 1 });
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.42), fur);
-        body.position.y = 0.45;
-        body.castShadow = true;
-        dog.add(body);
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), fur);
-        head.position.set(0.55, 0.55, 0);
-        head.castShadow = true;
-        dog.add(head);
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.55, 6), fur);
-        tail.rotation.z = Math.PI / 3;
-        tail.position.set(-0.55, 0.62, 0);
-        dog.add(tail);
+        const dog = createDogVisual();
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
@@ -862,10 +850,12 @@ export function WorldView({
         const dz = targetZ - mesh.position.z;
         mesh.position.x += dx * 0.12;
         mesh.position.z += dz * 0.12;
-        if (Math.hypot(dx, dz) > 0.02) {
+        const moving = Math.hypot(dx, dz) > 0.02;
+        if (moving) {
           mesh.rotation.y = Math.atan2(dx, dz);
         }
-        mesh.position.y = 0.65 + Math.sin(time / 220 + i) * 0.035;
+        mesh.position.y = 0;
+        updateCitizenVisual(mesh, time, moving, i);
         mesh.userData.activity = scheduled.activity;
       });
 
@@ -917,6 +907,7 @@ export function WorldView({
         dog.position.x = home.x + Math.cos(t) * radius;
         dog.position.z = home.z + Math.sin(t * 0.8) * radius;
         dog.rotation.y = -t + Math.PI / 2;
+        updateDogVisual(dog, time + i * 140);
       });
 
       propWaterRef.current.forEach((water, i) => {
@@ -933,6 +924,11 @@ export function WorldView({
         const material = glow.material as THREE.MeshStandardMaterial;
         material.emissiveIntensity = 0.18 + nightFactor * 1.45;
       });
+      if (ambientVisual) updateAmbientVisuals(ambientVisual, time, nightFactor);
+
+      // Shadows are intentionally refreshed at a lower cadence than the color pass.
+      // This preserves soft grounding while avoiding an expensive 2048px shadow render every frame.
+      if (frame % 12 === 0) renderer.shadowMap.needsUpdate = true;
 
       controls.update();
       renderer.render(scene, camera);
