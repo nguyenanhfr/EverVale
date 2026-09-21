@@ -68,6 +68,10 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   await expect(page.getByTestId("routing-status")).toContainText("12/12");
   console.log("M1_RENDER_METRICS", { drawCalls, triangles, citizens, disconnectedRoutes: 0 });
 
+  await expect(page.getByTestId("build-categories")).toBeVisible();
+  await expect(page.getByTestId("build-categories").getByRole("button", { name: "all", exact: true })).toBeVisible();
+  await expect(page.getByTestId("build-categories").getByRole("button", { name: "residential", exact: true })).toBeVisible();
+
   const cottageButton = page.getByRole("button", { name: /Hearth Cottage/i });
   await expect(cottageButton).toContainText("3×2 grid · 6×4m");
 
@@ -215,6 +219,7 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   await expect(page.getByTestId("combat-status")).toBeVisible();
   await expect(page.getByTestId("event-summary")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("event-summary")).toContainText(/repelled|breached/i);
+  await expect(page.getByTestId("battle-result")).toBeVisible({ timeout: 20_000 });
 
   // Read-side combat resolution is authoritative: repeated reads must observe the
   // same persisted event/revision instead of regenerating a projection-only event.
@@ -230,6 +235,10 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   );
   expect(resolvedEventB?.id).toBe(resolvedEventA.id);
   expect(resolvedReadB.world.revision).toBe(resolvedReadA.world.revision);
+
+  // Canonical after-action flow returns to town before repair interaction.
+  await page.getByRole("button", { name: "Return to Town" }).click();
+  await expect(page.getByTestId("battle-result")).toBeHidden();
 
   // The reference M1 wave is intentionally costly enough to exercise aftermath + repair.
   const repairButton = page.getByRole("button", { name: "Repair" }).first();
