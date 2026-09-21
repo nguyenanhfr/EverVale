@@ -153,6 +153,54 @@ function addGabledRoof(
   box(group,0.16,0.2,depth+0.58,material("copper",0.56,0.22),0,baseY+rise+0.03,0,false);
 }
 
+function addRoofRibs(
+  group: THREE.Group,
+  width: number,
+  depth: number,
+  baseY: number,
+  rise: number,
+): void {
+  const run=width/2+0.28;
+  const length=Math.hypot(run,rise);
+  const angle=Math.atan2(rise,run);
+  const trim=material("timberDark");
+  for(const z of [-depth*0.34,-depth*0.12,depth*0.12,depth*0.34]) {
+    for(const side of [-1,1] as const) {
+      const rib=mesh(
+        new THREE.BoxGeometry(length+0.08,0.055,0.075),
+        trim,
+        side*run/2,
+        baseY+rise/2+0.085,
+        z,
+        false,
+      );
+      rib.rotation.z=side<0 ? angle : -angle;
+      group.add(rib);
+    }
+  }
+}
+
+function addStoop(group: THREE.Group, x: number, z: number, width=1.2): void {
+  box(group,width,0.14,0.6,material("stone"),x,0.42,z+0.24,false);
+  box(group,width*0.82,0.10,0.34,material("stoneDark"),x,0.29,z+0.44,false);
+}
+
+function addPlanter(group: THREE.Group, x: number, z: number): void {
+  box(group,0.8,0.18,0.28,material("timberDark"),x,0.72,z,false);
+  box(group,0.66,0.07,0.2,material("soil"),x,0.83,z,false);
+  for(const dx of [-0.22,0,0.22]) {
+    const flower=mesh(new THREE.OctahedronGeometry(0.075,0),material(dx===0 ? "damaged" : "grass"),x+dx,0.98,z,false);
+    group.add(flower);
+  }
+}
+
+function addLantern(group: THREE.Group, x: number, y: number, z: number): void {
+  const frame=box(group,0.19,0.32,0.16,material("copper",0.58,0.2),x,y,z,false);
+  frame.rotation.z=0.03;
+  const glow=box(group,0.12,0.22,0.10,windowMaterial(),x,y,z+0.035,false);
+  glow.userData.buildingGlow=true;
+}
+
 function addTimberFront(group:THREE.Group,width:number,depth:number,height:number): void {
   const z=depth/2+0.055;
   for (const x of [-width*0.36,0,width*0.36]) {
@@ -174,9 +222,14 @@ function addHouse(group:THREE.Group,width:number,depth:number): void {
   box(group,width*0.88,h,depth*0.86,material("plaster"),0,h/2+0.34,0);
   addTimberFront(group,width*0.88,depth*0.86,h);
   addGabledRoof(group,width*0.96,depth*0.92,h+0.34,material("roofWarm"),1.15);
+  addRoofRibs(group,width*0.96,depth*0.92,h+0.34,1.15);
   addDoor(group,0,depth*0.43+0.08);
+  addStoop(group,0,depth*0.43+0.08);
   addWindow(group,-width*0.24,1.62,depth*0.43+0.09);
   addWindow(group,width*0.24,1.62,depth*0.43+0.09);
+  addWindow(group,width*0.44+0.055,1.58,-depth*0.12,false);
+  addWindow(group,-width*0.44-0.055,1.58,depth*0.12,false);
+  addPlanter(group,width*0.24,depth*0.43+0.17);
   addChimney(group,-width*0.27,-depth*0.18,h+0.15);
   box(group,width*0.28,0.08,0.48,material("soil"),width*0.26,0.08,depth*0.54,false);
 }
@@ -187,7 +240,11 @@ function addTownCenter(group:THREE.Group,width:number,depth:number): void {
   box(group,width*0.9,h,depth*0.84,material("plasterWarm"),0,h/2+0.34,0);
   addTimberFront(group,width*0.9,depth*0.84,h);
   addGabledRoof(group,width*0.98,depth*0.9,h+0.34,material("roof"),1.35);
+  addRoofRibs(group,width*0.98,depth*0.9,h+0.34,1.35);
   addDoor(group,0,depth*0.42+0.08,1.2,1.9);
+  addStoop(group,0,depth*0.42+0.08,1.55);
+  addLantern(group,-0.92,1.35,depth*0.42+0.15);
+  addLantern(group,0.92,1.35,depth*0.42+0.15);
   for (const x of [-width*0.28,width*0.28]) {
     addWindow(group,x,1.75,depth*0.42+0.09);
     addWindow(group,x,3.05,depth*0.42+0.09);
@@ -199,6 +256,8 @@ function addTownCenter(group:THREE.Group,width:number,depth:number): void {
   clock.rotation.x=Math.PI/2;
   group.add(clock);
   box(group,width*0.32,0.12,0.52,material("timberDark"),-width*0.25,0.55,depth*0.5+0.35,false);
+  addWindow(group,width*0.45+0.055,2.0,-depth*0.18,false);
+  addWindow(group,-width*0.45-0.055,2.0,depth*0.18,false);
 }
 
 function addWorkshop(group:THREE.Group,width:number,depth:number): void {
@@ -208,10 +267,13 @@ function addWorkshop(group:THREE.Group,width:number,depth:number): void {
   box(group,width*0.72,0.2,depth*0.98,material("roof"),0,h+0.52,0);
   addDoor(group,width*0.2,depth*0.43+0.08,1.35,1.85);
   addWindow(group,-width*0.25,1.72,depth*0.43+0.09);
+  addWindow(group,width*0.45+0.055,1.6,0,false);
   const awning=box(group,width*0.42,0.13,0.95,material("copper",0.65,0.18),width*0.2,h*0.62,depth*0.49+0.4);
   awning.rotation.x=-0.12;
   const wheel=mesh(new THREE.TorusGeometry(0.62,0.12,8,18),material("metal",0.55,0.35),-width*0.32,1.25,depth*0.46+0.13,false);
   group.add(wheel);
+  const vent=mesh(new THREE.CylinderGeometry(0.13,0.18,1.55,8),material("metal",0.62,0.28),width*0.34,h+0.68,-depth*0.18);
+  group.add(vent);
   for(let i=0;i<3;i+=1) box(group,0.5,0.38,0.5,material("timber"),-width*0.34+i*0.52,0.19,-depth*0.58,false);
 }
 
@@ -228,6 +290,10 @@ function addPowerPlant(group:THREE.Group,width:number,depth:number): void {
   }
   const flywheel=mesh(new THREE.TorusGeometry(0.75,0.14,8,20),material("copper",0.55,0.28),0,1.45,depth*0.43+0.13,false);
   group.add(flywheel);
+  for(const x of [-width*0.38,width*0.38]) {
+    const pipe=mesh(new THREE.CylinderGeometry(0.11,0.11,1.8,8),material("copper",0.5,0.28),x,1.2,depth*0.43+0.18,false);
+    group.add(pipe);
+  }
 }
 
 function addWaterPlant(group:THREE.Group,width:number,depth:number): void {
@@ -235,13 +301,18 @@ function addWaterPlant(group:THREE.Group,width:number,depth:number): void {
   addFoundation(group,width,depth);
   box(group,width*0.82,h,depth*0.76,material("plaster"),0,h/2+0.34,0);
   addGabledRoof(group,width*0.9,depth*0.82,h+0.34,material("roof"),0.8);
+  addRoofRibs(group,width*0.9,depth*0.82,h+0.34,0.8);
   addDoor(group,0,depth*0.38+0.08);
+  addStoop(group,0,depth*0.38+0.08);
   for(const x of [-width*0.3,width*0.3]) {
     const tank=mesh(new THREE.CylinderGeometry(0.72,0.82,1.5,14),material("water",0.42,0.08),x,0.92,-depth*0.48,false);
     group.add(tank);
     const rim=mesh(new THREE.TorusGeometry(0.76,0.06,6,16),material("metal",0.62,0.22),x,1.56,-depth*0.48,false);
     rim.rotation.x=Math.PI/2;
     group.add(rim);
+    const pipe=mesh(new THREE.CylinderGeometry(0.08,0.08,1.35,7),material("copper",0.56,0.22),x,0.7,-depth*0.38,false);
+    pipe.rotation.z=Math.PI/2;
+    group.add(pipe);
   }
 }
 

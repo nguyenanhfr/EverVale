@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { BuildingInstance } from "@evervale/domain/world.types";
 import type { BuildCatalogEntryDto } from "@evervale/protocol/world";
 
@@ -200,6 +201,113 @@ function addMaterialStacks(group: THREE.Group, width: number, depth: number): vo
   group.add(boards);
 }
 
+function addConstructionDetails(
+  group: THREE.Group,
+  width: number,
+  depth: number,
+  height: number,
+  stageIndex: number,
+): void {
+  const frontZ = depth / 2 + 0.7;
+
+  if (stageIndex >= 1) {
+    for (let i = 0; i < 5; i += 1) {
+      const brick = mesh(
+        new THREE.BoxGeometry(0.42,0.22,0.28),
+        i % 2 === 0 ? materials.concrete : materials.tarp,
+        -width*0.25 + (i%3)*0.46,
+        0.12 + Math.floor(i/3)*0.23,
+        frontZ,
+      );
+      brick.castShadow = false;
+      group.add(brick);
+    }
+  }
+
+  if (stageIndex >= 2) {
+    const ladderX = width/2 + 0.72;
+    for(const x of [ladderX-0.18,ladderX+0.18]) {
+      const rail=mesh(new THREE.BoxGeometry(0.07,height*0.78,0.07),materials.wood,x,height*0.4,frontZ-0.3);
+      rail.rotation.z=-0.09;
+      group.add(rail);
+    }
+    for(let i=0;i<5;i+=1) {
+      const rung=mesh(new THREE.BoxGeometry(0.44,0.055,0.07),materials.wood,ladderX,0.55+i*0.46,frontZ-0.3);
+      rung.rotation.z=-0.09;
+      group.add(rung);
+    }
+
+    for(const side of [-1,1] as const) {
+      const brace=mesh(
+        new THREE.BoxGeometry(0.09,height*0.68,0.09),
+        materials.timberDark,
+        side*(width/2+0.43),
+        height*0.5,
+        -depth/2-0.43,
+      );
+      brace.rotation.z=side*0.48;
+      group.add(brace);
+    }
+  }
+
+  if (stageIndex >= 3) {
+    const tray=mesh(new THREE.BoxGeometry(1.0,0.18,0.56),materials.scaffold,-width/2-0.9,0.62,frontZ-0.55);
+    tray.rotation.z=-0.08;
+    group.add(tray);
+    const wheel=mesh(new THREE.TorusGeometry(0.22,0.055,6,12),materials.scaffold,-width/2-0.52,0.38,frontZ-0.55);
+    wheel.rotation.y=Math.PI/2;
+    group.add(wheel);
+    for(const z of [-0.18,0.18]) {
+      const handle=mesh(new THREE.CylinderGeometry(0.025,0.025,0.9,5),materials.wood,-width/2-1.2,0.65,frontZ-0.55+z);
+      handle.rotation.z=Math.PI/2.7;
+      group.add(handle);
+    }
+  }
+
+  if (stageIndex >= 4) {
+    const tarp=mesh(new THREE.PlaneGeometry(Math.min(2.4,width*0.38),1.35),materials.cloth,width/2+0.47,height*0.55,0);
+    tarp.rotation.y=-Math.PI/2;
+    tarp.rotation.z=0.06;
+    tarp.castShadow=false;
+    group.add(tarp);
+  }
+}
+
+function compactConstruction(group: THREE.Group): void {
+  const buckets = new Map<string, {material: THREE.Material; geometries: THREE.BufferGeometry[]; castShadow: boolean; receiveShadow: boolean}>();
+
+  for(const child of [...group.children]) {
+    const source=child as THREE.Mesh;
+    if(!source.isMesh) continue;
+    source.updateMatrix();
+    const geometry=source.geometry.index ? source.geometry.toNonIndexed() : source.geometry.clone();
+    geometry.applyMatrix4(source.matrix);
+    const material=Array.isArray(source.material) ? source.material[0]! : source.material;
+    const key=`${material.uuid}:${source.castShadow ? 1 : 0}:${source.receiveShadow ? 1 : 0}`;
+    let bucket=buckets.get(key);
+    if(!bucket) {
+      bucket={material,geometries:[],castShadow:source.castShadow,receiveShadow:source.receiveShadow};
+      buckets.set(key,bucket);
+    }
+    bucket.geometries.push(geometry);
+    source.geometry.dispose();
+  }
+
+  group.clear();
+  for(const bucket of buckets.values()) {
+    const geometry=bucket.geometries.length===1 ? bucket.geometries[0]! : mergeGeometries(bucket.geometries,false);
+    if(!geometry) {
+      bucket.geometries.forEach((item)=>item.dispose());
+      continue;
+    }
+    if(bucket.geometries.length>1) bucket.geometries.forEach((item)=>item.dispose());
+    const combined=new THREE.Mesh(geometry,bucket.material);
+    combined.castShadow=bucket.castShadow;
+    combined.receiveShadow=bucket.receiveShadow;
+    group.add(combined);
+  }
+}
+
 function addProgressFlag(group: THREE.Group, width: number, progress: number): void {
   const poleX = -width / 2 - 0.65;
   group.add(
@@ -276,7 +384,9 @@ export function createConstructionObject(
   }
 
   addMaterialStacks(group, width, depth);
+  addConstructionDetails(group, width, depth, height, state.stageIndex);
   addProgressFlag(group, width, state.progress);
+  compactConstruction(group);
 
   group.position.set(building.position.x, 0, building.position.z);
   group.rotation.y = building.rotationY;
