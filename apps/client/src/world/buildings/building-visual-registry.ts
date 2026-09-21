@@ -6,28 +6,37 @@ import { createHouseSmallVisual } from "./house-small-visual";
 import { createTownCenterVisual } from "./town-center-visual";
 import { createWorkshopVisual } from "./workshop-visual";
 import { createPowerPlantVisual, createWaterPlantVisual } from "./utility-visual";
+import { addBuildingGroundContact } from "./building-contact-visual";
 
 export function createBuildingVisualFromRegistry(
   building: BuildingInstance,
   meta: BuildCatalogEntryDto | undefined,
   identity: BuildingVisualIdentity,
 ) {
+  let visual;
   switch (building.definitionId) {
     case "house_small":
-      return createHouseSmallVisual(building, meta, identity);
+      visual = createHouseSmallVisual(building, meta, identity);
+      break;
     case "town_center":
-      return createTownCenterVisual(building, meta, identity);
+      visual = createTownCenterVisual(building, meta, identity);
+      break;
     case "workshop":
-      return createWorkshopVisual(building, meta, identity);
+      visual = createWorkshopVisual(building, meta, identity);
+      break;
     case "power_plant":
-      return createPowerPlantVisual(building, meta, identity);
+      visual = createPowerPlantVisual(building, meta, identity);
+      break;
     case "water_plant":
-      return createWaterPlantVisual(building, meta, identity);
-    default: {
-      const legacy = createLegacyBuildingVisual(building, meta);
-      legacy.userData.visualVariant = identity.variantName;
-      legacy.userData.visualDialect = identity.dialect.id;
-      return legacy;
-    }
+      visual = createWaterPlantVisual(building, meta, identity);
+      break;
+    default:
+      visual = createLegacyBuildingVisual(building, meta);
+      visual.userData.visualVariant = identity.variantName;
+      visual.userData.visualDialect = identity.dialect.id;
+      break;
   }
+
+  addBuildingGroundContact(visual, building, meta, identity);
+  return visual;
 }
