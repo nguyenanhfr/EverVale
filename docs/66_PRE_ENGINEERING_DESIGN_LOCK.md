@@ -1,6 +1,8 @@
 # 66 — Pre-Engineering Design Lock
 
-Status: **LOCKED FOR M0/M1 ENGINEERING**
+Status: **PARTIALLY REOPENED — ECONOMY/GAMEPLAY ONLY**
+
+> **2026-09-21 PARTIAL REOPEN:** Economy/gameplay-system integration is no longer considered locked. `docs/80_GAMEPLAY_SYSTEMS_STUDIO_REAUDIT.md` found that the prior long-run proof did not exercise real purchase/construction/funding/recovery rules. This document remains historical authority for unaffected architecture decisions, but it must not be used to justify additional Economy/Progression feature implementation until docs 81–82 gates pass.
 
 Date: 2026-09-21
 
