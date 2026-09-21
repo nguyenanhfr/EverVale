@@ -448,6 +448,8 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   const harnessOptions: SimHarnessOptions = {
     seed: options.seed ?? 1,
     ...(Object.keys(mergedOverrides).length > 0 ? { buildingOverrides: mergedOverrides } : {}),
+    ...(options.workforceAllocator ? { workforceAllocator: options.workforceAllocator } : {}),
+    ...(options.defenseReadiness ? { defenseReadiness: options.defenseReadiness } : {}),
   };
   const harness = new SimHarness(harnessOptions);
   let world = await harness.initialize();
