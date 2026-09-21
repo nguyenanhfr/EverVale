@@ -14,13 +14,30 @@ export type ScenarioId =
   | "tech_rush"
   | "defense_rush"
   | "overexpand"
-  | "combat_recovery";
+  | "combat_recovery"
+  | "pure_industrial"
+  | "pure_scholar"
+  | "pure_civic"
+  | "pure_fortress"
+  | "balanced_hybrid"
+  | "omni_build"
+  | "pivot_industrial_to_fortress"
+  | "strong_multipath";
+
+export interface ScenarioPolicyTransition {
+  atSeconds: number;
+  label: string;
+  buildingOverrides: Record<string, Partial<BuildingDefinition>>;
+}
 
 export interface ScenarioDefinition {
   id: ScenarioId;
   description: string;
   buildPlan: string[];
-  triggerWaveAtSeconds?: number;
+  policyModel?: "RUNTIME_DEFAULT" | "BUILD_ORDER_AND_JOB_PRIORITY";
+  policyOverrides?: Record<string, Partial<BuildingDefinition>>;
+  policyTransitions?: ScenarioPolicyTransition[];
+  triggerWaveAtSeconds?: number[];
   autoRepair?: boolean;
 }
 
@@ -69,8 +86,197 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
     id: "combat_recovery",
     description: "Balanced town followed by an authoritative M1 threat and automatic repair authorization.",
     buildPlan: ["house_small", "school", "park", "guard_post"],
-    triggerWaveAtSeconds: 2 * 60 * 60,
+    triggerWaveAtSeconds: [2 * 60 * 60],
     autoRepair: true,
+  },
+
+  pure_industrial: {
+    id: "pure_industrial",
+    description: "Constitution C0: build order and job priority strongly favor Industry and Money.",
+    policyModel: "BUILD_ORDER_AND_JOB_PRIORITY",
+    buildPlan: [
+      "house_small",
+      "workshop",
+      "house_small",
+      "workshop",
+      "restaurant",
+      "house_small",
+      "workshop",
+      "school",
+      "guard_post",
+    ],
+    policyOverrides: {
+      workshop: { priority: 96 },
+      restaurant: { priority: 90 },
+      school: { priority: 45 },
+      guard_post: { priority: 40 },
+    },
+    triggerWaveAtSeconds: [4 * 60 * 60],
+  },
+
+  pure_scholar: {
+    id: "pure_scholar",
+    description: "Constitution C1: build order and job priority strongly favor School/Tech.",
+    policyModel: "BUILD_ORDER_AND_JOB_PRIORITY",
+    buildPlan: [
+      "house_small",
+      "school",
+      "house_small",
+      "school",
+      "park",
+      "house_small",
+      "school",
+      "workshop",
+      "guard_post",
+    ],
+    policyOverrides: {
+      school: { priority: 96 },
+      workshop: { priority: 52 },
+      restaurant: { priority: 48 },
+      guard_post: { priority: 42 },
+    },
+    triggerWaveAtSeconds: [4 * 60 * 60],
+  },
+
+  pure_civic: {
+    id: "pure_civic",
+    description: "Constitution C2: aggressively expands Housing and recreation to maximize sustainable Population/Workforce.",
+    policyModel: "BUILD_ORDER_AND_JOB_PRIORITY",
+    buildPlan: [
+      "house_small",
+      "park",
+      "house_small",
+      "park",
+      "house_small",
+      "restaurant",
+      "house_small",
+      "school",
+      "guard_post",
+    ],
+    policyOverrides: {
+      restaurant: { priority: 65 },
+      school: { priority: 62 },
+      workshop: { priority: 58 },
+      guard_post: { priority: 42 },
+    },
+    triggerWaveAtSeconds: [4 * 60 * 60],
+  },
+
+  pure_fortress: {
+    id: "pure_fortress",
+    description: "Constitution C3: prioritizes Defense staffing and redundant Guard investment before economy/Tech.",
+    policyModel: "BUILD_ORDER_AND_JOB_PRIORITY",
+    buildPlan: [
+      "house_small",
+      "guard_post",
+      "house_small",
+      "guard_post",
+      "park",
+      "school",
+      "house_small",
+      "workshop",
+    ],
+    policyOverrides: {
+      guard_post: { priority: 96 },
+      school: { priority: 55 },
+      workshop: { priority: 52 },
+      restaurant: { priority: 48 },
+    },
+    triggerWaveAtSeconds: [4 * 60 * 60],
+  },
+
+  balanced_hybrid: {
+    id: "balanced_hybrid",
+    description: "Constitution C4: balanced build order with no artificial path priority override.",
+    policyModel: "RUNTIME_DEFAULT",
+    buildPlan: [
+      "house_small",
+      "school",
+      "guard_post",
+      "park",
+      "house_small",
+      "workshop",
+      "restaurant",
+    ],
+    triggerWaveAtSeconds: [4 * 60 * 60],
+  },
+
+  omni_build: {
+    id: "omni_build",
+    description: "Constitution C5: deliberately attempts to maximize all branches and exposes multi-system pressure.",
+    policyModel: "RUNTIME_DEFAULT",
+    buildPlan: [
+      "house_small",
+      "workshop",
+      "school",
+      "guard_post",
+      "park",
+      "house_small",
+      "workshop",
+      "school",
+      "guard_post",
+      "restaurant",
+      "house_small",
+      "park",
+      "farm",
+    ],
+    triggerWaveAtSeconds: [4 * 60 * 60],
+  },
+
+  pivot_industrial_to_fortress: {
+    id: "pivot_industrial_to_fortress",
+    description: "Constitution C6: starts Industry-heavy, then reassigns job priority toward Defense at hour 4 without deleting buildings.",
+    policyModel: "BUILD_ORDER_AND_JOB_PRIORITY",
+    buildPlan: [
+      "house_small",
+      "workshop",
+      "house_small",
+      "workshop",
+      "school",
+      "guard_post",
+      "house_small",
+      "guard_post",
+    ],
+    policyOverrides: {
+      workshop: { priority: 96 },
+      school: { priority: 48 },
+      guard_post: { priority: 40 },
+    },
+    policyTransitions: [
+      {
+        atSeconds: 4 * 60 * 60,
+        label: "INDUSTRIAL_TO_FORTRESS",
+        buildingOverrides: {
+          workshop: { priority: 52 },
+          school: { priority: 55 },
+          guard_post: { priority: 96 },
+        },
+      },
+    ],
+    triggerWaveAtSeconds: [5 * 60 * 60],
+  },
+
+  strong_multipath: {
+    id: "strong_multipath",
+    description: "Constitution C7 probe: attempts broad capability from the same starter rather than using a gifted late-game fixture.",
+    policyModel: "RUNTIME_DEFAULT",
+    buildPlan: [
+      "house_small",
+      "workshop",
+      "house_small",
+      "school",
+      "guard_post",
+      "park",
+      "house_small",
+      "restaurant",
+      "workshop",
+      "school",
+      "guard_post",
+      "house_small",
+      "farm",
+      "park",
+    ],
+    triggerWaveAtSeconds: [4 * 60 * 60, 8 * 60 * 60],
   },
 };
 
