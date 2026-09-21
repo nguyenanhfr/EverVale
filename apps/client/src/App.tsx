@@ -69,6 +69,7 @@ export default function App() {
   const [metrics, setMetrics] = useState<RuntimeMetrics | null>(null);
   const [routingHealth, setRoutingHealth] = useState({ routed: 0, disconnected: 0 });
   const [dismissedCombatId, setDismissedCombatId] = useState<string | null>(null);
+  const [alertsOpen, setAlertsOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!ownerId) return;
@@ -377,6 +378,13 @@ export default function App() {
               {speed === 0 ? "Ⅱ" : `${speed}×`}
             </button>
           ))}
+          <button
+            className={alertsOpen ? "active alerts-toggle" : "alerts-toggle"}
+            aria-expanded={alertsOpen}
+            onClick={() => setAlertsOpen((value) => !value)}
+          >
+            Alerts {w.events.length > 0 ? `(${Math.min(99, w.events.length)})` : ""}
+          </button>
         </div>
       </header>
 
@@ -420,6 +428,33 @@ export default function App() {
             Return to Town
           </button>
         </section>
+      )}
+
+      {alertsOpen && (
+        <aside className="alerts-center hud-panel" data-testid="alerts-center">
+          <div className="alerts-center-heading">
+            <div>
+              <span className="eyebrow">ALERTS</span>
+              <strong>Town Log</strong>
+            </div>
+            <button onClick={() => setAlertsOpen(false)} aria-label="Close alerts">×</button>
+          </div>
+          {w.events.length === 0 ? (
+            <p>No alerts yet.</p>
+          ) : (
+            <div className="alerts-history">
+              {[...w.events].slice(-12).reverse().map((event) => (
+                <div key={event.id} className="alerts-history-row">
+                  <span className={`event-dot severity-${Math.max(0, Math.min(3, Math.floor(event.severity)))}`} />
+                  <div>
+                    <strong>{event.type.replaceAll("_", " ")}</strong>
+                    <small>{event.summary}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
       )}
 
       {recentEvents.length > 0 && (
