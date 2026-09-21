@@ -19,7 +19,7 @@ const generatedFactories: Partial<
   Record<CitizenPresentationRole, CitizenVisualFactory>
 > = { ...generatedCitizenFactories };
 
-const GENERATED_DETAIL_SLOT_LIMIT = 18;
+const GENERATED_DETAIL_SLOT_LIMIT = 12;
 
 export function registerGeneratedCitizenFactory(
   role: CitizenPresentationRole,
