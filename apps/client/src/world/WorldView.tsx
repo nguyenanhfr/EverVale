@@ -747,7 +747,7 @@ export function WorldView({
         const adultJob = adultJobBuilding?.position ?? home;
         const work = child ? (school?.position ?? home) : adultJob;
         const role = citizenRoleForWorkplace(child, child ? "school" : adultJobBuilding?.definitionId);
-        const citizen = createCitizenVisual(String(current.seed), i, child, role, i < 10);
+        const citizen = createCitizenVisual(String(current.seed), i, child, role, i < 6);
         citizen.userData.index = i;
         citizen.userData.child = child;
         citizen.userData.role = role;
