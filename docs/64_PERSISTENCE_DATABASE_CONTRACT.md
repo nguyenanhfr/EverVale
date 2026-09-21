@@ -89,3 +89,30 @@ Material M1 boundaries currently include:
 
 See:
 `docs/78_M1_7_AUTHORITATIVE_READ_CHECKPOINTS.md`
+
+
+## M1.8 persisted state integrity & recovery
+
+Current persisted runtime schema:
+
+`WORLD_SCHEMA_VERSION = 1`
+
+Persistence boundary requirements:
+
+- validate every world before application/domain use
+- reject unsupported schema versions
+- reject malformed latest snapshots
+- validate accepted-command receipt lineage
+- JSON dev persistence uses versioned SHA-256 envelope
+- JSON dev keeps same-revision backup recovery
+- PostgreSQL never auto-rolls back from request paths
+- PostgreSQL recovery is explicit, transactional, and revision-forward
+
+Operational commands:
+
+`pnpm db:doctor -- <worldId>`
+
+`pnpm db:recover-world -- <worldId> <sourceRevision> --confirm=<worldId>`
+
+See:
+`docs/79_M1_8_PERSISTED_STATE_INTEGRITY_RECOVERY.md`
