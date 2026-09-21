@@ -185,6 +185,8 @@ export class WorldService {
           (prefix) => this.options.ids.next(prefix),
         );
         break;
+      default:
+        throw new Error("UNKNOWN_COMMAND");
     }
 
     world = {
