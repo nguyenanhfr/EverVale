@@ -644,6 +644,16 @@ export function WorldView({
         current.buildings,
       );
       host.dataset.visualDialect = resolveWorldVisualDialect(current.seed).id;
+      const houseVariants = current.buildings
+        .filter(
+          (building) =>
+            building.definitionId === "house_small" &&
+            building.constructionState === "COMPLETE",
+        )
+        .map((building) => visualIdentities.get(building.id)?.variantName)
+        .filter((value): value is string => Boolean(value));
+      host.dataset.houseVariants = houseVariants.join(",");
+      host.dataset.houseVariantCount = String(new Set(houseVariants).size);
 
       current.buildings.forEach((building) => {
         const meta = buildCatalogRef.current.find((item) => item.id === building.definitionId);
@@ -747,6 +757,7 @@ export function WorldView({
         40,
         visualPopulationRef.current ?? current.society.population,
       );
+      const presentedRoles = new Set<string>();
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
         const homeBuilding = homes[i % Math.max(1, homes.length)];
@@ -762,6 +773,7 @@ export function WorldView({
         citizen.userData.index = i;
         citizen.userData.child = child;
         citizen.userData.role = role;
+        presentedRoles.add(role);
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
@@ -796,6 +808,8 @@ export function WorldView({
         dynamic.add(citizen);
         citizensRef.current.push(citizen);
       }
+      host.dataset.citizenRoles = [...presentedRoles].sort().join(",");
+      host.dataset.citizenRoleCount = String(presentedRoles.size);
 
       const disconnectedRoutes = citizensRef.current.filter(
         (citizen) => citizen.userData.routingConnected === false,
