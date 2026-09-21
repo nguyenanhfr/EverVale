@@ -149,10 +149,26 @@ export function currentMoneyFlow(
   };
 }
 
+export interface DefenseReadinessOverlay {
+  sourceBuildingDefinitionId: string;
+  guardActorDefinitionId: string;
+  slotsPerSource: number;
+}
+
+export interface DefenseDeploymentRecord {
+  atSeconds: number;
+  sourceCount: number;
+  sourceWorkersAssigned: number;
+  supportedGuardCapacity: number;
+  guardActorsBefore: number;
+  guardActorsAfter: number;
+}
+
 export interface SimHarnessOptions {
   seed?: number;
   buildingOverrides?: Record<string, Partial<SimulationDefinitions["buildings"][string]>>;
   workforceAllocator?: WorkforceAllocator;
+  defenseReadiness?: DefenseReadinessOverlay;
 }
 
 export class SimHarness {
@@ -162,8 +178,10 @@ export class SimHarness {
   readonly service: WorldService;
   readonly ownerId: string;
   readonly actions: SimActionResult[] = [];
+  readonly defenseDeployments: DefenseDeploymentRecord[] = [];
 
   private readonly placementCandidates: Array<{ x: number; z: number }>;
+  private readonly defenseReadiness?: DefenseReadinessOverlay;
   private combatFixtureCounter = 0;
 
   readonly seed: number;
@@ -180,6 +198,7 @@ export class SimHarness {
     }
 
     this.ownerId = `devsim-owner-${this.seed}`;
+    this.defenseReadiness = options.defenseReadiness;
     this.clock = new SimClock(new Date("2026-09-21T12:00:00.000Z"));
     this.service = new WorldService({
       repository: this.repository,
@@ -452,7 +471,79 @@ export class SimHarness {
     });
 
     try {
-      const after = await this.service.command(this.ownerId, command);
+      let after = await this.service.command(this.ownerId, command);
+
+      if (this.defenseReadiness && after.combat) {
+        const sourceDefinition =
+          this.definitions.buildings[this.defenseReadiness.sourceBuildingDefinitionId];
+        if (!sourceDefinition) {
+          throw new Error(
+            `DEVSIM_DEFENSE_SOURCE_MISSING:${this.defenseReadiness.sourceBuildingDefinitionId}`,
+          );
+        }
+
+        const sources = after.buildings.filter(
+          (building) =>
+            building.definitionId === this.defenseReadiness!.sourceBuildingDefinitionId &&
+            building.constructionState === "COMPLETE" &&
+            building.damageState !== "DISABLED",
+        );
+
+        let sourceWorkersAssigned = 0;
+        let supportedGuardCapacity = 0;
+        for (const source of sources) {
+          const assigned = Math.max(
+            0,
+            Math.min(source.workersAssigned, sourceDefinition.workers),
+          );
+          sourceWorkersAssigned += assigned;
+          const staffingRatio =
+            sourceDefinition.workers <= 0 ? 1 : assigned / sourceDefinition.workers;
+          supportedGuardCapacity += Math.floor(
+            this.defenseReadiness.slotsPerSource * staffingRatio,
+          );
+        }
+
+        let seenGuards = 0;
+        const guardActorsBefore = after.combat.actors.filter(
+          (actor) =>
+            actor.side === "DEFENDER" &&
+            actor.definitionId === this.defenseReadiness!.guardActorDefinitionId,
+        ).length;
+
+        const actors = after.combat.actors.filter((actor) => {
+          if (
+            actor.side !== "DEFENDER" ||
+            actor.definitionId !== this.defenseReadiness!.guardActorDefinitionId
+          ) {
+            return true;
+          }
+          seenGuards += 1;
+          return seenGuards <= supportedGuardCapacity;
+        });
+
+        after = {
+          ...after,
+          combat: {
+            ...after.combat,
+            actors,
+          },
+        };
+        this.repository.replaceForFixture(after);
+        this.defenseDeployments.push({
+          atSeconds: after.simulationSeconds,
+          sourceCount: sources.length,
+          sourceWorkersAssigned,
+          supportedGuardCapacity,
+          guardActorsBefore,
+          guardActorsAfter: actors.filter(
+            (actor) =>
+              actor.side === "DEFENDER" &&
+              actor.definitionId === this.defenseReadiness!.guardActorDefinitionId,
+          ).length,
+        });
+      }
+
       const result: SimActionResult = {
         accepted: true,
         type: command.type,
