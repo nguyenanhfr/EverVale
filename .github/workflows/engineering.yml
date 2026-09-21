@@ -17,6 +17,8 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      - name: DevSim authoritative smoke gate
+        run: pnpm devsim:smoke
       - run: pnpm build
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
