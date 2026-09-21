@@ -135,8 +135,9 @@ async function main(): Promise<void> {
   if (command === "paths") {
     const hours = numberFlag(args, "--hours", 8);
     const strongHours = numberFlag(args, "--strong-hours", 12);
+    const longHours = numberFlag(args, "--long-hours", 12);
     const seed = numberFlag(args, "--seed", 1);
-    const report = await runStrategicPathPack({ hours, strongHours, seed });
+    const report = await runStrategicPathPack({ hours, strongHours, longHours, seed });
     console.log(JSON.stringify(report, null, 2));
     return;
   }
@@ -213,7 +214,7 @@ async function main(): Promise<void> {
     "Commands:",
     "  scenario <id> [--hours 8] [--seed 1] [--series] [--full]",
     "  baseline [--hours 8] [--seed 1]",
-    "  paths [--hours 8] [--strong-hours 12] [--seed 1]",
+    "  paths [--hours 8] [--long-hours 12] [--strong-hours 12] [--seed 1]",
     "  roi",
     "  graph",
     "  authority-test",
