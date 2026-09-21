@@ -1,3 +1,4 @@
+import { loadAuditBalanceData } from "@evervale/balance-data";
 import type { BuildingDefinition } from "@evervale/domain/world.types";
 import {
   SimHarness,
@@ -113,6 +114,13 @@ export interface ScenarioLedger {
 }
 
 export interface ScenarioReport {
+  provenance: {
+    balanceVersion: string;
+    simulationDataVersion: string;
+    techDataVersion: string;
+    scenarioPolicyVersion: string;
+    sourceRevision: string;
+  };
   scenarioId: ScenarioId;
   description: string;
   seed: number;
@@ -152,6 +160,7 @@ function pushOnce(
 
 export async function runScenario(options: ScenarioRunOptions): Promise<ScenarioReport> {
   const definition = SCENARIOS[options.scenarioId];
+  const auditBalance = loadAuditBalanceData();
   const stepSeconds = options.stepSeconds ?? 60;
   if (!Number.isFinite(options.hours) || options.hours <= 0) throw new Error("INVALID_HOURS");
   if (!Number.isFinite(stepSeconds) || stepSeconds <= 0) throw new Error("INVALID_STEP_SECONDS");
@@ -354,6 +363,13 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
     .reduce((sum, action) => sum + Math.max(0, -action.moneyDelta), 0);
 
   const report: ScenarioReport = {
+    provenance: {
+      balanceVersion: auditBalance.buildingBalance.version,
+      simulationDataVersion: auditBalance.simulation.version,
+      techDataVersion: auditBalance.tech.version,
+      scenarioPolicyVersion: "0.1",
+      sourceRevision: process.env.GITHUB_SHA ?? "working-tree",
+    },
     scenarioId: definition.id,
     description: definition.description,
     seed: harness.seed,
