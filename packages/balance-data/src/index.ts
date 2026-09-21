@@ -170,6 +170,19 @@ export interface BuildCatalogEntry {
   footprintCellsZ: number;
   gridCellMeters: number;
   sizeTitle: string;
+  workers: number;
+  jobCategory: string | null;
+  moneyPerWorker: number;
+  powerProduction: number;
+  powerUse: number;
+  waterProduction: number;
+  waterUse: number;
+  techProduction: number;
+  upkeep: number;
+  housingAdd: number;
+  educationCoverageAdd: number;
+  recreationCoverageAdd: number;
+  safetyAdd: number;
 }
 
 export interface BlockerCatalogEntry {
@@ -269,6 +282,19 @@ export function loadGameData(): LoadedGameData {
         footprintCellsZ: def.footprintCellsZ,
         gridCellMeters: footprintData.grid_cell_meters,
         sizeTitle: `${def.footprintCellsX}×${def.footprintCellsZ} grid · ${def.footprintCellsX * footprintData.grid_cell_meters}×${def.footprintCellsZ * footprintData.grid_cell_meters}m`,
+        workers: def.workers,
+        jobCategory: def.jobCategory ?? null,
+        moneyPerWorker: def.moneyPerWorker,
+        powerProduction: def.powerProduction,
+        powerUse: def.powerUse,
+        waterProduction: def.waterProduction,
+        waterUse: def.waterUse,
+        techProduction: def.techProduction,
+        upkeep: def.upkeep,
+        housingAdd: def.housingAdd,
+        educationCoverageAdd: def.educationCoverageAdd,
+        recreationCoverageAdd: def.recreationCoverageAdd,
+        safetyAdd: def.safetyAdd,
       };
     })
     .sort((a, b) => a.techTier - b.techTier || a.name.localeCompare(b.name));
