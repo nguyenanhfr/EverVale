@@ -575,21 +575,6 @@ export default function App() {
           </button>
         </div>
 
-        <div className="primary-tools">
-          <button className={mode === "SELECT" ? "active" : ""} onClick={enterSelect}>Select</button>
-          <button
-            className={mode === "ROAD" ? "active" : ""}
-            onClick={() => {
-              setMode("ROAD");
-              setSelectedBuild(null);
-              setSelectedProp(null);
-              setRoadStart(null);
-            }}
-          >
-            Road
-          </button>
-        </div>
-
         <div className="divider" />
 
         {catalogTab === "BUILD" ? (
