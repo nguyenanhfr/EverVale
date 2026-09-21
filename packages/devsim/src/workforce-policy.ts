@@ -738,6 +738,8 @@ export async function runWorkforceCandidatePolicyPack(options: {
     buildPlan,
     workforceAllocator: defenseBalancedController.allocator,
     defenseReadiness,
+    triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {},
   });
 
   const defense = await runScenario({
@@ -747,6 +749,8 @@ export async function runWorkforceCandidatePolicyPack(options: {
     buildPlan,
     workforceAllocator: defenseController.allocator,
     defenseReadiness,
+    triggerWaveAtSeconds: [4 * 60 * 60],
+    combatStressExtraEnemies: {},
   });
 
   const pausedIndustry = await runScenario({
