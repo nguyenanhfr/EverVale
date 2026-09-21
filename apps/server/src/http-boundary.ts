@@ -91,6 +91,14 @@ export function statusForError(message: string): number {
   if (message === "REQUEST_TOO_LARGE") return 413;
   if (message === "UNSUPPORTED_MEDIA_TYPE") return 415;
   if (
+    message === "WORLD_STATE_CORRUPT" ||
+    message === "WORLD_STATE_CHECKSUM_MISMATCH" ||
+    message === "WORLD_SCHEMA_UNSUPPORTED" ||
+    message === "WORLD_COMMAND_RECEIPT_CORRUPT"
+  ) {
+    return 503;
+  }
+  if (
     message === "INVALID_JSON" ||
     message === "UNKNOWN_COMMAND" ||
     message.startsWith("INVALID_") ||

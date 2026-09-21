@@ -121,6 +121,9 @@ test("Postgres repository enforces M1 persistence invariants", async () => {
     assert.equal(Number(commandCount.rows[0]?.count ?? 0), 1);
 
     // Force enough revisions to exercise transactional snapshot retention.
+    // The final revision also carries an accepted command that must be invalidated
+    // if an operator later recovers to revision 56.
+    const lateCommandId = randomUUID();
     for (let revision = 3; revision <= 57; revision += 1) {
       const next = {
         ...current,
@@ -129,7 +132,19 @@ test("Postgres repository enforces M1 persistence invariants", async () => {
           Date.parse("2026-09-21T12:00:00.000Z") + revision * 1000,
         ).toISOString(),
       };
-      await repository.save(next, revision - 1);
+      await repository.save(
+        next,
+        revision - 1,
+        revision === 57
+          ? {
+              commandId:lateCommandId,
+              ownerId,
+              expectedRevision:56,
+              commandType:"SET_SPEED",
+              fingerprint:"late-command-fingerprint",
+            }
+          : undefined,
+      );
       current = next;
     }
 
@@ -141,6 +156,68 @@ test("Postgres repository enforces M1 persistence invariants", async () => {
 
     const latest = await repository.findById(worldId);
     assert.equal(latest?.revision, 57);
+
+    // Poison the latest JSONB snapshot with syntactically valid but structurally
+    // invalid data. The repository must fail closed instead of casting it.
+    await pool.query(
+      "UPDATE world_snapshots SET snapshot = $3::jsonb WHERE world_id = $1 AND revision = $2",
+      [worldId, 57, JSON.stringify({ worldId, revision:57, poisoned:true })],
+    );
+
+    await assert.rejects(
+      () => repository.findById(worldId),
+      /WORLD_STATE_CORRUPT/,
+    );
+
+    const integrity = await repository.inspectSnapshots(worldId);
+    assert.equal(integrity[0]?.revision, 57);
+    assert.equal(integrity[0]?.status, "CORRUPT");
+    assert.equal(integrity[1]?.revision, 56);
+    assert.equal(integrity[1]?.status, "VALID");
+
+    const recovered = await repository.recoverFromSnapshot(worldId, 56);
+    assert.equal(recovered.revision, 58);
+    assert.equal(recovered.events.at(-1)?.type, "WORLD_RECOVERED");
+
+    const afterRecovery = await repository.findById(worldId);
+    assert.equal(afterRecovery?.revision, 58);
+    assert.equal(afterRecovery?.events.at(-1)?.type, "WORLD_RECOVERED");
+
+    // Receipt from the abandoned branch is removed; ancestor receipts survive.
+    assert.equal(await repository.findAcceptedCommand(lateCommandId), null);
+    assert.ok(await repository.findAcceptedCommand(commandId));
+
+    const commandCountAfterRecovery = await pool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM world_commands WHERE world_id = $1",
+      [worldId],
+    );
+    assert.equal(Number(commandCountAfterRecovery.rows[0]?.count ?? 0), 1);
+
+    const recoveryEventCount = await pool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM world_events WHERE world_id = $1 AND event_type = 'WORLD_RECOVERED'",
+      [worldId],
+    );
+    assert.equal(Number(recoveryEventCount.rows[0]?.count ?? 0), 1);
+
+    // Unsupported future schema versions must never be interpreted as v1.
+    await pool.query(
+      "UPDATE worlds SET schema_version = 99 WHERE id = $1",
+      [worldId],
+    );
+    await assert.rejects(
+      () => repository.findById(worldId),
+      /WORLD_SCHEMA_UNSUPPORTED/,
+    );
+    await pool.query(
+      "UPDATE worlds SET schema_version = 1 WHERE id = $1",
+      [worldId],
+    );
+
+    const finalSnapshotCount = await pool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM world_snapshots WHERE world_id = $1",
+      [worldId],
+    );
+    assert.equal(Number(finalSnapshotCount.rows[0]?.count ?? 0), 50);
   } finally {
     await pool.query("DELETE FROM worlds WHERE id = $1", [worldId]);
     await pool.end();
