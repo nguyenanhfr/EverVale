@@ -242,7 +242,7 @@ function firstUtilityRecovery(
 ): number | null {
   if (!series) return null;
   for (const sample of series) {
-    if (sample.atSeconds < startSeconds) continue;
+    if (sample.atSeconds <= startSeconds) continue;
     if (
       sample.power >= sample.powerCap * ratio &&
       sample.water >= sample.waterCap * ratio
