@@ -56,6 +56,7 @@ export default function App() {
   const [view, setView] = useState<WorldViewDto | null>(null);
   const [mode, setMode] = useState<Mode>("SELECT");
   const [catalogTab, setCatalogTab] = useState<CatalogTab>("BUILD");
+  const [buildCategory, setBuildCategory] = useState("all");
   const [selectedBuild, setSelectedBuild] = useState<BuildCatalogEntryDto | null>(null);
   const [selectedProp, setSelectedProp] = useState<PropCatalogEntryDto | null>(null);
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
@@ -116,6 +117,18 @@ export default function App() {
   const unlockedCatalog = useMemo(
     () => view?.buildCatalog.filter((b) => b.techTier <= view.world.resources.techTier) ?? [],
     [view],
+  );
+
+  const buildCategories = useMemo(
+    () => Array.from(new Set(unlockedCatalog.map((item) => item.category))).sort(),
+    [unlockedCatalog],
+  );
+
+  const visibleBuildCatalog = useMemo(
+    () => buildCategory === "all"
+      ? unlockedCatalog
+      : unlockedCatalog.filter((item) => item.category === buildCategory),
+    [buildCategory, unlockedCatalog],
   );
 
   const movingPropMeta = useMemo(() => {
@@ -395,8 +408,26 @@ export default function App() {
         <div className="divider" />
 
         {catalogTab === "BUILD" ? (
-          <div className="catalog-list" data-testid="build-catalog">
-            {unlockedCatalog.map((item) => (
+          <>
+            <div className="group-chips build-category-chips" data-testid="build-categories">
+              <button
+                className={buildCategory === "all" ? "active" : ""}
+                onClick={() => setBuildCategory("all")}
+              >
+                all
+              </button>
+              {buildCategories.map((category) => (
+                <button
+                  key={category}
+                  className={buildCategory === category ? "active" : ""}
+                  onClick={() => setBuildCategory(category)}
+                >
+                  {category.replaceAll("_", " ")}
+                </button>
+              ))}
+            </div>
+            <div className="catalog-list" data-testid="build-catalog">
+              {visibleBuildCatalog.map((item) => (
               <button
                 key={item.id}
                 className={mode === "BUILD" && selectedBuild?.id === item.id ? "active catalog-card" : "catalog-card"}
@@ -413,8 +444,9 @@ export default function App() {
                 <small>{item.sizeTitle}</small>
                 <small>¤{item.moneyCost} · {item.buildCycles} cycles</small>
               </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div className="group-chips" data-testid="prop-groups">
