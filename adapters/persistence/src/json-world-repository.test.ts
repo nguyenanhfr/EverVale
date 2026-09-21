@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -72,6 +72,136 @@ test("JSON repository persists accepted command receipt across repository restar
     const loaded = await second.findById(base.worldId);
     assert.equal(loaded?.revision, 1);
     assert.equal(loaded?.speed, 2);
+  } finally {
+    await rm(directory, { recursive:true, force:true });
+  }
+});
+
+
+test("JSON repository writes versioned envelope and recovers a corrupt primary from same-revision backup", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "evervale-json-integrity-"));
+  try {
+    const repository = new JsonWorldRepository(directory);
+    const base = world();
+    await repository.create(base);
+
+    const primary = path.join(directory, `${base.worldId}.json`);
+    const backup = path.join(directory, `${base.worldId}.json.bak`);
+
+    const stored = JSON.parse(await readFile(primary, "utf8")) as {
+      format: string;
+      schemaVersion: number;
+      checksum: string;
+      world: WorldState;
+    };
+    assert.equal(stored.format, "evervale-world");
+    assert.equal(stored.schemaVersion, 1);
+    assert.match(stored.checksum, /^sha256:[0-9a-f]{64}$/);
+
+    const accepted = {
+      ...base,
+      revision:1,
+      speed:2 as const,
+    };
+    await repository.save(accepted, 0, {
+      commandId:"22222222-2222-4222-8222-222222222222",
+      ownerId:base.ownerId,
+      expectedRevision:0,
+      commandType:"SET_SPEED",
+      fingerprint:"integrity-save",
+    });
+
+    const committedBackup = await readFile(backup, "utf8");
+    const tampered = JSON.parse(await readFile(primary, "utf8")) as {
+      checksum: string;
+      world: WorldState;
+    };
+    tampered.world.resources.money = 4999;
+    await writeFile(primary, JSON.stringify(tampered, null, 2), "utf8");
+
+    const recovered = await repository.findById(base.worldId);
+    assert.equal(recovered?.revision, 1);
+    assert.equal(recovered?.speed, 2);
+    assert.equal(recovered?.resources.money, 1200);
+    assert.equal(await readFile(primary, "utf8"), committedBackup);
+  } finally {
+    await rm(directory, { recursive:true, force:true });
+  }
+});
+
+test("JSON repository fails closed when primary and backup are both corrupt", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "evervale-json-corrupt-"));
+  try {
+    const repository = new JsonWorldRepository(directory);
+    const base = world();
+    await repository.create(base);
+
+    await writeFile(path.join(directory, `${base.worldId}.json`), "{bad", "utf8");
+    await writeFile(path.join(directory, `${base.worldId}.json.bak`), "{also-bad", "utf8");
+
+    await assert.rejects(
+      () => repository.findById(base.worldId),
+      /WORLD_STATE_CORRUPT/,
+    );
+  } finally {
+    await rm(directory, { recursive:true, force:true });
+  }
+});
+
+test("JSON repository reads legacy raw world and upgrades it on next save", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "evervale-json-legacy-"));
+  try {
+    const base = world();
+    await writeFile(
+      path.join(directory, `${base.worldId}.json`),
+      JSON.stringify(base, null, 2),
+      "utf8",
+    );
+
+    const repository = new JsonWorldRepository(directory);
+    const loaded = await repository.findById(base.worldId);
+    assert.deepEqual(loaded, base);
+
+    await repository.save({ ...base, revision:1, speed:2 }, 0);
+    const upgraded = JSON.parse(
+      await readFile(path.join(directory, `${base.worldId}.json`), "utf8"),
+    ) as { format: string; schemaVersion: number };
+    assert.equal(upgraded.format, "evervale-world");
+    assert.equal(upgraded.schemaVersion, 1);
+  } finally {
+    await rm(directory, { recursive:true, force:true });
+  }
+});
+
+test("JSON repository rejects corrupt accepted command receipt", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "evervale-json-receipt-"));
+  try {
+    const repository = new JsonWorldRepository(directory);
+    const base = world();
+    await repository.create(base);
+    await repository.save({ ...base, revision:1, speed:2 }, 0, {
+      commandId:"33333333-3333-4333-8333-333333333333",
+      ownerId:base.ownerId,
+      expectedRevision:0,
+      commandType:"SET_SPEED",
+      fingerprint:"receipt-integrity",
+    });
+
+    const receiptPath = path.join(
+      directory,
+      "commands",
+      "33333333-3333-4333-8333-333333333333.json",
+    );
+    const receipt = JSON.parse(await readFile(receiptPath, "utf8")) as {
+      worldId: string;
+    };
+    receipt.worldId = "tampered-world";
+    await writeFile(receiptPath, JSON.stringify(receipt), "utf8");
+
+    await assert.rejects(
+      () => repository.findAcceptedCommand("33333333-3333-4333-8333-333333333333"),
+      /WORLD_COMMAND_RECEIPT_CORRUPT/,
+    );
   } finally {
     await rm(directory, { recursive:true, force:true });
   }
