@@ -343,6 +343,7 @@ export interface ScenarioRunOptions {
   policyTransitions?: ScenarioPolicyTransition[];
   resourceTransitions?: ScenarioResourceTransition[];
   includeSeries?: boolean;
+  beforeStep?: (elapsedSeconds: number) => void;
 }
 
 export interface ScenarioMilestones {
@@ -492,6 +493,7 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   const horizonSeconds = options.hours * 60 * 60;
 
   for (let elapsed = 0; elapsed < horizonSeconds; elapsed += stepSeconds) {
+    options.beforeStep?.(elapsed);
     world = await harness.world();
 
     for (const transition of policyTransitions) {
