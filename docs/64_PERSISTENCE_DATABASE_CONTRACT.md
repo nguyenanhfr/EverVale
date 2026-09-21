@@ -61,3 +61,31 @@ Lease note:
 
 See:
 `docs/76_M1_5_PERSISTENCE_CONCURRENCY_HARDENING.md`
+
+
+## M1.7 authoritative read checkpoint status
+
+Read-side simulation remains projection-only for ordinary short polling.
+
+Authoritative checkpoint rules:
+
+- periodic checkpoint after 5 real minutes of non-paused ACTIVE progression
+- immediate checkpoint at material simulation boundaries
+- checkpoint increments revision exactly once
+- checkpoint uses repository revision CAS
+- checkpoint persists snapshots and significant events
+- checkpoint does not create a world_commands receipt
+- CAS loser reloads the committed winner instead of overwriting it
+
+Material M1 boundaries currently include:
+
+- combat ID/status/outcome transition
+- new player-facing event
+- construction state transition
+- damage/repair state transition
+- blocker removal/state transition
+- tech tier change
+- population integer change
+
+See:
+`docs/78_M1_7_AUTHORITATIVE_READ_CHECKPOINTS.md`
