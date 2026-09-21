@@ -90,14 +90,38 @@ test("Postgres repository enforces M1 persistence invariants", async () => {
       /WORLD_OWNER_EXISTS/,
     );
 
+    const checkpointEventId = randomUUID();
+    current = {
+      ...current,
+      revision:2,
+      lastSimulatedAt:"2026-09-21T12:00:02.000Z",
+      events:[
+        ...current.events,
+        {
+          id:checkpointEventId,
+          type:"READ_CHECKPOINT_EVENT",
+          happenedAt:"2026-09-21T12:00:02.000Z",
+          severity:0,
+          summary:"Read-side authoritative checkpoint event.",
+        },
+      ],
+    };
+    await repository.save(current, 1);
+
     const eventCount = await pool.query<{ count: string }>(
       "SELECT count(*)::text AS count FROM world_events WHERE world_id = $1",
       [worldId],
     );
-    assert.equal(Number(eventCount.rows[0]?.count ?? 0), 1);
+    assert.equal(Number(eventCount.rows[0]?.count ?? 0), 2);
+
+    const commandCount = await pool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM world_commands WHERE world_id = $1",
+      [worldId],
+    );
+    assert.equal(Number(commandCount.rows[0]?.count ?? 0), 1);
 
     // Force enough revisions to exercise transactional snapshot retention.
-    for (let revision = 2; revision <= 56; revision += 1) {
+    for (let revision = 3; revision <= 57; revision += 1) {
       const next = {
         ...current,
         revision,
@@ -116,7 +140,7 @@ test("Postgres repository enforces M1 persistence invariants", async () => {
     assert.equal(Number(snapshotCount.rows[0]?.count ?? 0), 50);
 
     const latest = await repository.findById(worldId);
-    assert.equal(latest?.revision, 56);
+    assert.equal(latest?.revision, 57);
   } finally {
     await pool.query("DELETE FROM worlds WHERE id = $1", [worldId]);
     await pool.end();
