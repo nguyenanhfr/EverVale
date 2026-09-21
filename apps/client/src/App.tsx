@@ -442,7 +442,7 @@ export default function App() {
           Select
         </button>
         <button
-          className={catalogTab === "BUILD" && mode !== "ROAD" ? "" : ""}
+          className={mode === "BUILD" ? "active" : ""}
           onClick={() => {
             setCatalogTab("BUILD");
             setMode("SELECT");
