@@ -304,6 +304,10 @@ export function loadGameData(): LoadedGameData {
 
 
 export interface AuditBalanceData {
+  buildingBalance: {
+    version: string;
+    status: string;
+  };
   starterWorld: {
     version: string;
     starting_state: {
@@ -358,6 +362,7 @@ export interface AuditBalanceData {
 
 export function loadAuditBalanceData(): AuditBalanceData {
   return {
+    buildingBalance: readYaml<AuditBalanceData["buildingBalance"]>("data/balance/v0.2/buildings.yaml"),
     starterWorld: readYaml<AuditBalanceData["starterWorld"]>("data/world/v0.1/starter_world.yaml"),
     simulation: readYaml<AuditBalanceData["simulation"]>("data/balance/v0.1/simulation.yaml"),
     tech: readYaml<AuditBalanceData["tech"]>("data/balance/v0.1/tech.yaml"),
