@@ -9,6 +9,7 @@ export interface CitizenVisualFactoryContext {
   child: boolean;
   role: CitizenPresentationRole;
   castShadow: boolean;
+  generatedDetailAllowed?: boolean;
 }
 
 export type CitizenVisualFactory = (
@@ -19,7 +20,7 @@ const generatedFactories: Partial<
   Record<CitizenPresentationRole, CitizenVisualFactory>
 > = { ...generatedCitizenFactories };
 
-const GENERATED_DETAIL_SLOT_LIMIT = 12;
+const GENERATED_DETAIL_SLOT_LIMIT = 18;
 
 export function registerGeneratedCitizenFactory(
   role: CitizenPresentationRole,
@@ -41,7 +42,8 @@ function normalizeCitizenObject(
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh) return;
     mesh.castShadow = context.castShadow;
-    mesh.receiveShadow = true;
+    mesh.receiveShadow =
+      context.castShadow || context.generatedDetailAllowed !== false;
   });
 
   return object;
@@ -53,7 +55,8 @@ export function createCitizenVisualFromRegistry(
   const generated = generatedFactories[context.role];
   const useGeneratedDetail =
     Boolean(generated) &&
-    context.presentationSlot < GENERATED_DETAIL_SLOT_LIMIT;
+    (context.generatedDetailAllowed ??
+      context.presentationSlot < GENERATED_DETAIL_SLOT_LIMIT);
 
   if (useGeneratedDetail && generated) {
     return normalizeCitizenObject(generated(context), context, "generated_factory");
