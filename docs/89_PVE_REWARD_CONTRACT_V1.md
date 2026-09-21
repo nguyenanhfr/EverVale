@@ -1,6 +1,6 @@
 # 89 — PvE Reward Contract v1
 
-Status: **LEADERSHIP DESIGN LOCK CANDIDATE**
+Status: **BRACKET-0 DEVSIM VALIDATED — HIGHER BRACKETS/RUNTIME PENDING**
 
 Date: 2026-09-21
 
@@ -34,7 +34,7 @@ Threat
 → Reinvestment
 ```
 
-This document does not lock final numeric reward values.
+Bracket-0 candidate values below have now passed DevSim validation. Higher-bracket values remain provisional.
 
 ---
 
@@ -512,3 +512,120 @@ PvE Reward Contract is ready for runtime only when DevSim can answer:
 - Can PvE replace Varum production?
 
 If any answer is unclear, final reward values are not locked.
+
+
+---
+
+# 22. Validated bracket-0 candidate
+
+Measured evidence is recorded in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md`.
+
+Candidate base:
+
+- Money: **120**
+- Tech: **2**
+- Varum: **0**
+
+Outcome multipliers:
+
+- CLEAN: **1.00**
+- COSTLY: **0.35**
+- BREACH: **0.10**
+
+Measured result:
+
+| Outcome | Money reward | Tech reward | Repair | Net Money after repair |
+|---|---:|---:|---:|---:|
+| CLEAN | 120 | 2.0 | 0 | **+120** |
+| COSTLY | 42 | 0.7 | 54 | **−12** |
+| BREACH | 12 | 0.2 | 105 | **−93** |
+
+Thus:
+
+```
+CLEAN > COSTLY > BREACH
+```
+
+while COSTLY is not a free-profit outcome and BREACH remains clearly negative.
+
+# 23. Peaceful opportunity-cost evidence
+
+8h net Money production:
+
+- Industry HIGH: **2432.3**
+- Balanced: **1875.5**
+- Defense HIGH: **1031.6**
+
+Defense opportunity cost:
+
+- versus Balanced: **843.9**
+- versus Industry: **1400.7**
+
+Prepared CLEAN versus unprepared COSTLY gives **132 Money** of measured combat-value delta on the base threat.
+
+Equivalent base-threat wins needed to cover the 8h Defense opportunity cost:
+
+- versus Balanced: approximately **6.39**
+- versus Industry: approximately **10.61**
+
+Therefore trivial bracket-0 combat does not make Fortress the best peaceful economy.
+
+This is intentional.
+
+# 24. Anti-farm evidence
+
+Equivalent-encounter reward multipliers:
+
+```
+1.00, 0.35, 0.10, 0.00
+```
+
+Four equivalent CLEAN rewards:
+
+**174 Money**
+
+Compared with 8h Industry net production:
+
+**2432.3 Money**
+
+Farm fraction:
+
+**7.15%**
+
+`TRIGGER_TEST_WAVE` remains reward-disabled.
+
+# 25. Tech/Varum safety
+
+Two hours of fully staffed School output:
+
+**60 Tech**
+
+Bracket-0 CLEAN PvE Tech:
+
+**2 Tech**
+
+PvE share:
+
+**3.33%**
+
+PvE remains a bonus rather than a Scholar replacement.
+
+Bracket 0 grants **0 Varum**.
+
+Higher bracket reward values remain provisional until their actual wave compositions are simulated.
+
+# 26. PvE gate result
+
+The current bracket-0 candidate passes all measured reward gates:
+
+- Defense creates combat value
+- Industry remains peaceful Money leader
+- reward hierarchy is correct
+- BREACH remains negative
+- COSTLY is not free profit
+- CLEAN does not replace Industry economy
+- PvE Tech remains subordinate to School
+- repeated-equivalent farming is strongly diminished
+- test wave has no reward
+
+Runtime implementation is still pending.
