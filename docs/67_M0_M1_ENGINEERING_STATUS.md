@@ -229,4 +229,4 @@ Runtime/persistence-only scope:
 - explicit revision-forward PostgreSQL recovery
 - abandoned-history command/event cleanup
 
-M1.8 v2 exit is PASS on PR #10: preflight, TypeScript, unit, production build, browser/API E2E, migration first-run + safe rerun, and PostgreSQL corruption/recovery integration are green.
+M1.8 v2 code/runtime gates are PASS on PR #10: preflight, TypeScript, unit, production build, M1 runtime browser flow, migration first-run + safe rerun, and PostgreSQL corruption/recovery integration are green. Merge remains blocked by the existing visual stress frame gate on the current visual HEAD; no threshold or graphics code is changed.
