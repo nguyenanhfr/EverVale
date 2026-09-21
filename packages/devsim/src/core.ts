@@ -160,6 +160,7 @@ export class SimHarness {
   readonly actions: SimActionResult[] = [];
 
   private readonly placementCandidates: Array<{ x: number; z: number }>;
+  private combatFixtureCounter = 0;
 
   readonly seed: number;
 
@@ -303,6 +304,51 @@ export class SimHarness {
     return result;
   }
 
+
+  amplifyCurrentCombat(extraEnemies: Record<string, number>): void {
+    const world = this.repository.world;
+    if (!world?.combat || world.combat.status === "RESOLVED") {
+      throw new Error("DEVSIM_COMBAT_NOT_ACTIVE");
+    }
+
+    const actors = world.combat.actors.map((actor) => ({ ...actor }));
+    let positionIndex = 0;
+
+    for (const [definitionId, count] of Object.entries(extraEnemies).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
+      const definition = this.definitions.enemies[definitionId];
+      if (!definition) throw new Error(`UNKNOWN_STRESS_ENEMY:${definitionId}`);
+      if (!Number.isSafeInteger(count) || count < 0) {
+        throw new Error(`INVALID_STRESS_ENEMY_COUNT:${definitionId}`);
+      }
+
+      for (let index = 0; index < count; index += 1) {
+        this.combatFixtureCounter += 1;
+        actors.push({
+          id: `stress-${definitionId}-${this.seed}-${this.combatFixtureCounter}`,
+          definitionId,
+          side: "ENEMY",
+          hp: definition.hp,
+          maxHp: definition.hp,
+          position: {
+            x: -12 + (positionIndex % 7) * 4,
+            y: 0,
+            z: 18 + Math.floor(positionIndex / 7) * 3,
+          },
+        });
+        positionIndex += 1;
+      }
+    }
+
+    this.repository.replaceForFixture({
+      ...world,
+      combat: {
+        ...world.combat,
+        actors,
+      },
+    });
+  }
 
   async repairBuilding(buildingId: string): Promise<SimActionResult> {
     const before = await this.world();
