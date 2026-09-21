@@ -38,6 +38,7 @@ function assertScenario(value: string | undefined): ScenarioId {
 
 function compact(report: ScenarioReport): Record<string, unknown> {
   return {
+    provenance: report.provenance,
     scenario: report.scenarioId,
     hours: report.requestedHours,
     seed: report.seed,
