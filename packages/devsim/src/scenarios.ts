@@ -344,6 +344,8 @@ export interface ScenarioRunOptions {
   resourceTransitions?: ScenarioResourceTransition[];
   includeSeries?: boolean;
   beforeStep?: (elapsedSeconds: number) => void;
+  triggerWaveAtSeconds?: number[];
+  combatStressExtraEnemies?: Record<string, number>;
 }
 
 export interface ScenarioMilestones {
@@ -572,15 +574,17 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
       }
     }
 
-    const waveSchedule = definition.triggerWaveAtSeconds ?? [];
+    const waveSchedule = options.triggerWaveAtSeconds ?? definition.triggerWaveAtSeconds ?? [];
     if (
       nextWaveIndex < waveSchedule.length &&
       elapsed >= (waveSchedule[nextWaveIndex] ?? Number.POSITIVE_INFINITY)
     ) {
       const action = await harness.triggerWave();
       if (action.accepted) {
-        if (definition.combatStressExtraEnemies) {
-          harness.amplifyCurrentCombat(definition.combatStressExtraEnemies);
+        const combatStressExtraEnemies =
+          options.combatStressExtraEnemies ?? definition.combatStressExtraEnemies;
+        if (combatStressExtraEnemies) {
+          harness.amplifyCurrentCombat(combatStressExtraEnemies);
         }
         nextWaveIndex += 1;
       } else if (action.error !== "COMBAT_ALREADY_ACTIVE") {
