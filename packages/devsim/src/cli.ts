@@ -152,6 +152,13 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "workforce-candidate") {
+    const hours = numberFlag(args, "--hours", 8);
+    const seed = numberFlag(args, "--seed", 1);
+    console.log(JSON.stringify(await runWorkforceCandidatePolicyPack({ hours, seed }), null, 2));
+    return;
+  }
+
   if (command === "allocator-lab") {
     console.log(JSON.stringify(runWorkforceAllocatorLab(), null, 2));
     return;
@@ -231,6 +238,7 @@ async function main(): Promise<void> {
     "  baseline [--hours 8] [--seed 1]",
     "  paths [--hours 8] [--long-hours 12] [--strong-hours 12] [--seed 1]",
     "  workforce [--hours 8] [--seed 1]",
+    "  workforce-candidate [--hours 8] [--seed 1]",
     "  allocator-lab",
     "  roi",
     "  graph",
