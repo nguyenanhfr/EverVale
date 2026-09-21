@@ -554,23 +554,54 @@ export default function App() {
       </aside>
 
       <aside className="status-panel hud-panel">
-        <div data-testid="building-count"><strong>Buildings</strong> {w.buildings.length}</div>
-        <div data-testid="prop-count"><strong>Props</strong> {w.props.length}</div>
-        <div data-testid="simulation-seconds"><strong>Sim</strong> {Math.floor(w.simulationSeconds)}s</div>
-        <div><strong>Workforce</strong> {w.society.assignedWorkers}/{w.society.workforce}</div>
-        <div><strong>Education</strong> {Math.round(w.society.educationCoverage * 100)}%</div>
-        <div><strong>Recreation</strong> {Math.round(w.society.recreationCoverage * 100)}%</div>
-        <div><strong>Safety</strong> {Math.round(w.society.safety * 100)}%</div>
-        <div><strong>Beauty</strong> {w.society.beauty.toFixed(2)} / 5</div>
-        <div data-testid="routing-status">
-          <strong>Road routing</strong>{" "}
-          {routingHealth.routed > 0
-            ? `${routingHealth.routed - routingHealth.disconnected}/${routingHealth.routed}`
-            : "measuring…"}
+        <div className="town-overview-heading">
+          <span className="eyebrow">TOWN OVERVIEW</span>
+          <strong>Settlement Health</strong>
+        </div>
+
+        <div className="overview-workforce">
+          <span>Workforce</span>
+          <b>{w.society.assignedWorkers}/{w.society.workforce}</b>
+          <small>{Math.max(0, w.society.workforce - w.society.assignedWorkers)} available</small>
+        </div>
+
+        <div className="overview-meter-row">
+          <span>Education</span>
+          <div className="overview-meter"><i style={{ width: `${Math.round(w.society.educationCoverage * 100)}%` }} /></div>
+          <b>{Math.round(w.society.educationCoverage * 100)}%</b>
+        </div>
+        <div className="overview-meter-row">
+          <span>Recreation</span>
+          <div className="overview-meter"><i style={{ width: `${Math.round(w.society.recreationCoverage * 100)}%` }} /></div>
+          <b>{Math.round(w.society.recreationCoverage * 100)}%</b>
+        </div>
+        <div className="overview-meter-row">
+          <span>Safety</span>
+          <div className="overview-meter"><i style={{ width: `${Math.round(w.society.safety * 100)}%` }} /></div>
+          <b>{Math.round(w.society.safety * 100)}%</b>
+        </div>
+
+        <div className="overview-stats">
+          <div data-testid="building-count"><small>Buildings</small><b>{w.buildings.length}</b></div>
+          <div data-testid="prop-count"><small>Props</small><b>{w.props.length}</b></div>
+          <div><small>Beauty</small><b>{w.society.beauty.toFixed(2)}</b></div>
+        </div>
+
+        <div className="routing-card" data-testid="routing-status">
+          <span>Road routing</span>
+          <b>
+            {routingHealth.routed > 0
+              ? `${routingHealth.routed - routingHealth.disconnected}/${routingHealth.routed}`
+              : "measuring…"}
+          </b>
+        </div>
+
+        <div className="debug-stat" data-testid="simulation-seconds">
+          <strong>Sim</strong> {Math.floor(w.simulationSeconds)}s
         </div>
 
         <div
-          className="perf-probe"
+          className="perf-probe debug-stat"
           data-testid="runtime-metrics"
           data-fps={metrics?.fps ?? 0}
           data-frame-p95={metrics?.frameMsP95 ?? 0}
