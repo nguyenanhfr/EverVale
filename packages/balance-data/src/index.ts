@@ -444,3 +444,37 @@ export function loadWorkforceAllocatorLabData(): WorkforceAllocatorLabData {
     "data/devsim/v0.1/workforce_allocator_fixtures.yaml",
   );
 }
+
+
+export interface DefenseReadinessCandidate {
+  version: string;
+  status: string;
+  model_revision: string;
+  guard: {
+    source_building: string;
+    unit_definition: string;
+    slots_per_source: number;
+    requires_staffed_source: boolean;
+    capacity_rule: "floor_proportional";
+  };
+  town_warden: {
+    always_available: boolean;
+    baseline_count: number;
+  };
+  validation: {
+    zero_staff_expected_guard_capacity: number;
+    half_staff_expected_guard_capacity: number;
+    full_staff_expected_guard_capacity: number;
+  };
+  gates: {
+    full_staff_condition_loss_must_be_lower_than_zero: boolean;
+    defense_high_condition_loss_must_be_lower_than_balanced: boolean;
+    deterministic_replay_required: boolean;
+  };
+}
+
+export function loadDefenseReadinessCandidate(): DefenseReadinessCandidate {
+  return readYaml<DefenseReadinessCandidate>(
+    "data/devsim/v0.1/defense_readiness.yaml",
+  );
+}
