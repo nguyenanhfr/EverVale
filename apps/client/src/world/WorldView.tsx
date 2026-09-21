@@ -7,10 +7,15 @@ import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protoc
 import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisualFromRegistry } from "./buildings/building-visual-registry";
 import { createRoadVisual } from "./road-visual";
-import { animateCitizenVisual, createCitizenVisual, createDogVisual } from "./actor-visual";
+import { animateCitizenVisual, createCitizenVisual } from "./actors/citizen-visual";
+import { createDogVisual } from "./actors/animal-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
-import { resolveBuildingVisualIdentities, resolveWorldVisualDialect } from "./visual-identity";
+import {
+  citizenRoleForWorkplace,
+  resolveBuildingVisualIdentities,
+  resolveWorldVisualDialect,
+} from "./visual-identity";
 import {
   constructionVisualState,
   createBuilderObject,
@@ -717,7 +722,7 @@ export function WorldView({
       );
       const jobs = current.buildings.filter(
         (b) =>
-          ["workshop", "power_plant", "water_plant", "school", "guard_post"].includes(b.definitionId) &&
+          ["workshop", "power_plant", "water_plant", "school", "guard_post", "farm", "restaurant", "builders_yard"].includes(b.definitionId) &&
           b.constructionState === "COMPLETE",
       );
       const school = current.buildings.find(
@@ -744,12 +749,19 @@ export function WorldView({
       );
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const citizen = createCitizenVisual(i, child, i < 18);
+        const homeBuilding = homes[i % Math.max(1, homes.length)];
+        const home = homeBuilding?.position ?? { x: 0, y: 0, z: 0 };
+        const adultJobBuilding = jobs[i % Math.max(1, jobs.length)];
+        const adultJob = adultJobBuilding?.position ?? home;
+        const work = child ? (school?.position ?? home) : adultJob;
+        const role = citizenRoleForWorkplace(
+          child,
+          child ? "school" : adultJobBuilding?.definitionId,
+        );
+        const citizen = createCitizenVisual(current.seed, i, child, role, i < 6);
         citizen.userData.index = i;
         citizen.userData.child = child;
-        const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
-        const adultJob = jobs[i % Math.max(1, jobs.length)]?.position ?? home;
-        const work = child ? (school?.position ?? home) : adultJob;
+        citizen.userData.role = role;
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
@@ -793,7 +805,7 @@ export function WorldView({
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
 
       if (homes.length > 0) {
-        const dog = createDogVisual();
+        const dog = createDogVisual(current.seed);
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
