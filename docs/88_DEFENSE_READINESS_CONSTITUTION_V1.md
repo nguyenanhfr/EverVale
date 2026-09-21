@@ -1,6 +1,6 @@
 # 88 — Defense Readiness Constitution v1
 
-Status: **LEADERSHIP DESIGN LOCK CANDIDATE**
+Status: **DEVSIM VALIDATED — RUNTIME IMPLEMENTATION PENDING**
 
 Date: 2026-09-21
 
@@ -360,3 +360,33 @@ These are not implemented by this document.
 5. design PvE Reward Contract
 6. simulate Defense ROI including reward
 7. only then implement authoritative runtime state/commands
+
+
+---
+
+# 17. Measured validation
+
+Defense Readiness DevSim used the existing M1 combat engine and real domain repair command.
+
+Base threat results:
+
+| Guard Post staffing | Deployable Guards | Outcome | Condition loss | Repair spend |
+|---|---:|---|---:|---:|
+| 0 / 2 | 0 | COSTLY | 18 | 54 |
+| 1 / 2 | 1 | CLEAN | 0 | 0 |
+| 2 / 2 | 2 | CLEAN | 0 | 0 |
+
+Measured gates:
+
+- zero staffing creates zero Guards — PASS
+- half staffing creates proportional capacity — PASS
+- full staffing creates full capacity — PASS
+- full staffing creates measurable combat value — PASS
+
+This validates the staffed-source rule already declared by `production.yaml`.
+
+It does **not** validate the later 0..100 persistent readiness/fatigue model yet.
+
+Production debt remains:
+
+`triggerM1Wave()` must eventually stop granting full Guard capacity merely because a Guard Post is complete.
