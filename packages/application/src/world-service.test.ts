@@ -493,3 +493,44 @@ test("first-load create race recovers by loading the world committed by another 
   assert.equal(result.ownerId, "owner-cross-process-race");
   assert.equal(result.revision, 3);
 });
+
+
+test("application rejects an unknown runtime command without persisting", async () => {
+  const base = new Date("2026-09-21T12:00:00.000Z");
+  const world: WorldState = {
+    worldId:"world-unknown-command",
+    ownerId:"owner-unknown-command",
+    seed:7,
+    revision:1,
+    lifecycle:"ACTIVE",
+    speed:1,
+    simulationSeconds:0,
+    lastSimulatedAt:base.toISOString(),
+    resources:{money:1200,moneyCap:5000,power:60,powerCap:120,water:60,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:0,safety:0.5,beauty:0},
+    buildings:[building("tc","town_center")],
+    roads:[], blockers:[], props:[], combat:null, events:[],
+  };
+
+  const repo = new Repo(world);
+  const service = new WorldService({
+    repository: repo,
+    definitions: defs,
+    ids: new Ids(),
+    clock: new FakeClock(base),
+  });
+
+  await assert.rejects(
+    () => service.command("owner-unknown-command", {
+      type:"ADMIN_GIVE_MONEY",
+      commandId:"runtime-bypass",
+      expectedRevision:1,
+      payload:{ amount:999999 },
+    } as never),
+    /UNKNOWN_COMMAND/,
+  );
+
+  assert.equal(repo.saveCalls, 0);
+  assert.equal(repo.world.revision, 1);
+  assert.equal(repo.world.resources.money, 1200);
+});
