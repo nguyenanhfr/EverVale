@@ -229,12 +229,13 @@ export function createCategoryFloorPolicyController(
       .filter((value): value is NonNullable<typeof value> => value !== null);
 
     const assignments = new Map<string, number>();
-    const categories = [...new Set(candidates.map((item) => item.category))]
+    const floorEligible = candidates.filter((item) => item.level !== "low");
+    const categories = [...new Set(floorEligible.map((item) => item.category))]
       .sort((a, b) => categoryOrder(a) - categoryOrder(b) || a.localeCompare(b));
 
     for (const category of categories) {
       if (available <= 0) break;
-      const categoryCandidates = candidates
+      const categoryCandidates = floorEligible
         .filter((item) => item.category === category)
         .sort(
           (a, b) =>
