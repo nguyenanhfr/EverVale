@@ -208,4 +208,4 @@ Runtime-only scope:
 - reload committed winner after checkpoint CAS race
 - create no command receipt for read checkpoints
 
-Final M1.7 exit requires full preflight, TypeScript, unit, build, browser/API E2E, migration rerun, and PostgreSQL integration PASS.
+M1.7 exit is PASS on PR #5: preflight, TypeScript, unit, production build, browser/API E2E, migration first-run + safe rerun, and PostgreSQL integration are green.
