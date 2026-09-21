@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { AcceptedCommandReceipt } from "@evervale/application/ports";
 import type {
   BlockerInstance,
   BuildingInstance,
@@ -374,4 +375,33 @@ export function decodeWorldDocument(raw: string): {
 
 export function validateSchemaVersion(value: unknown): void {
   if (value !== WORLD_SCHEMA_VERSION) fail("WORLD_SCHEMA_UNSUPPORTED");
+}
+
+
+export function validateAcceptedCommandReceipt(value: unknown): AcceptedCommandReceipt {
+  const source = record(value);
+  const world = validateWorldState(source.world);
+  const commandId = requiredString(source, "commandId");
+  const worldId = requiredString(source, "worldId");
+  const ownerId = requiredString(source, "ownerId");
+  const expectedRevision = nonNegativeInteger(source, "expectedRevision");
+  const commandType = requiredString(source, "commandType");
+  const fingerprint = requiredString(source, "fingerprint");
+
+  if (world.worldId !== worldId || world.ownerId !== ownerId) {
+    return fail("WORLD_COMMAND_RECEIPT_CORRUPT");
+  }
+  if (world.revision < expectedRevision + 1) {
+    return fail("WORLD_COMMAND_RECEIPT_CORRUPT");
+  }
+
+  return {
+    commandId,
+    worldId,
+    ownerId,
+    expectedRevision,
+    commandType,
+    fingerprint,
+    world,
+  };
 }
