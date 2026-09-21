@@ -1,6 +1,6 @@
 # 79 — M1.8 Persisted State Integrity & Recovery
 
-Status: **IMPLEMENTED ON V2 ENGINEERING BRANCH / CI REQUIRED**
+Status: **PASS — PR #10 FULL CI GREEN**
 
 Date: 2026-09-21
 
@@ -260,15 +260,23 @@ Real PostgreSQL integration additionally injects a syntactically valid but malfo
 - unsupported schema version fails closed
 - snapshot retention remains bounded
 
-## Exit condition
+## Exit result
 
-M1.8 v2 is PASS only after all relevant gates are green on the branch created from the current visual HEAD:
+PR #10 validated code-gate head:
 
-- canonical/preflight validation
-- TypeScript typecheck
-- unit tests
-- production build
-- Playwright browser/API E2E
-- PostgreSQL migration first run
-- PostgreSQL migration safe rerun
-- PostgreSQL corruption/recovery integration
+`741012d666b167dce26a85c4c730685e1df46ecf`
+
+GitHub Actions result:
+
+- canonical/preflight validation: PASS
+- TypeScript typecheck: PASS
+- unit tests: PASS
+- production build: PASS
+- Playwright browser/API E2E: PASS
+- PostgreSQL migration first run: PASS
+- PostgreSQL migration safe rerun: PASS
+- PostgreSQL corruption/recovery integration: PASS
+
+One earlier browser attempt on the same visual base hit the existing stress-frame edge (30 then 28 vs required >30). No threshold was changed. After the JSON durability ordering fix, the unchanged visual/performance gate passed in full.
+
+**M1.8 PERSISTED STATE INTEGRITY & RECOVERY: PASS**
