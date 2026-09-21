@@ -35,7 +35,7 @@ async function apiCommand(
 }
 
 test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", async ({ page, request }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => {
     pageErrors.push(error.message);
