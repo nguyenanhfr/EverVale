@@ -229,4 +229,4 @@ Runtime/persistence-only scope:
 - explicit revision-forward PostgreSQL recovery
 - abandoned-history command/event cleanup
 
-Final M1.8 exit requires full preflight, TypeScript, unit, build, browser/API E2E, migration rerun, and PostgreSQL corruption/recovery integration PASS.
+M1.8 exit is PASS on PR #7: preflight, TypeScript, unit, production build, browser/API E2E, migration first-run + safe rerun, and PostgreSQL corruption/recovery integration are green.
