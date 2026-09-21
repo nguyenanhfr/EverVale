@@ -188,4 +188,4 @@ Added without touching visual systems:
 - repeatable E2E identities independent of stale JSON state
 - protocol/server/application regression tests
 
-Final M1.6 exit requires branch CI to pass TypeScript, unit, build, browser/API E2E, migration rerun, and real PostgreSQL persistence integration.
+M1.6 exit is PASS on PR #3: TypeScript, unit, production build, browser/API E2E, migration first-run + safe rerun, real PostgreSQL integration, and preflight are green.
