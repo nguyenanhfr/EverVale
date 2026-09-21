@@ -23,10 +23,12 @@ jobs:
         run: pnpm devsim baseline --hours 8 --seed 1
       - name: DevSim utility sensitivity report
         run: |
-          pnpm devsim sweep power_plant powerProduction 20,24,28,32,36,40 --scenario overexpand --hours 8 --seed 1
-          pnpm devsim sweep water_plant waterProduction 18,22,26,30,35 --scenario overexpand --hours 8 --seed 1
+          pnpm devsim sweep power_plant powerProduction 12,16,18,20,22,24,28,40 --scenario overexpand --hours 8 --seed 1
+          pnpm devsim sweep water_plant waterProduction 14,16,18,20,22,26,35 --scenario overexpand --hours 8 --seed 1
       - name: DevSim Money sensitivity report
         run: pnpm devsim sweep workshop moneyPerWorker 5,6,7,8 --scenario economy_rush --hours 8 --seed 1
+      - name: DevSim Workforce priority sensitivity report
+        run: pnpm devsim sweep workshop priority 50,60,65,70,75,80 --scenario economy_rush --hours 8 --seed 1
       - run: pnpm build
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
