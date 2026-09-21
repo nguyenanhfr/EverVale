@@ -1,0 +1,56 @@
+version: "1"
+grid:
+  columns: 6
+  rows: 4
+  trim_near_white: true
+  trim_threshold: 246
+  margin_ratio: 0.055
+
+roles:
+  casual_resident:
+    primary: { row: 0, column: 0 }
+    alternates:
+      - { row: 0, column: 1 }
+      - { row: 0, column: 2 }
+      - { row: 0, column: 3 }
+
+  school_child:
+    primary: { row: 0, column: 4 }
+    alternates:
+      - { row: 0, column: 5 }
+
+  builder:
+    primary: { row: 1, column: 0 }
+
+  guard:
+    primary: { row: 1, column: 1 }
+
+  teacher:
+    primary: { row: 1, column: 2 }
+
+  farmer:
+    primary: { row: 1, column: 3 }
+
+  cafe_worker:
+    primary: { row: 1, column: 4 }
+
+  utility_technician:
+    primary: { row: 1, column: 5 }
+
+  workshop_worker:
+    primary: { row: 2, column: 0 }
+
+  service_crew:
+    primary: { row: 2, column: 1 }
+
+reserved:
+  - { row: 2, column: 2, note: "grocer / market worker" }
+  - { row: 2, column: 3, note: "gardener / florist" }
+  - { row: 2, column: 4, note: "postal / delivery worker" }
+  - { row: 2, column: 5, note: "fisher / waterside worker" }
+  - { row: 3, column: 0, note: "parent / caregiver" }
+  - { row: 3, column: 1, note: "student / young adult" }
+  - { row: 3, column: 2, note: "baker / kitchen worker" }
+  - { row: 3, column: 3, note: "medical / maintenance variant" }
+  - { row: 3, column: 4, note: "emergency / specialist worker" }
+  - { row: 3, column: 5, note: "winter casual resident" }
