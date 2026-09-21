@@ -158,10 +158,25 @@ export function createEnvironmentVisuals(
   scene.add(sun);
   scene.add(sun.target);
 
+  const groundGeometry=new THREE.PlaneGeometry(110,110,22,22);
+  const groundColors:number[]=[];
+  const position=groundGeometry.getAttribute("position");
+  const baseColor=new THREE.Color(0x809d70);
+  const dryColor=new THREE.Color(0x91a878);
+  const deepColor=new THREE.Color(0x708b64);
+  for(let i=0;i<position.count;i+=1) {
+    const x=position.getX(i);
+    const y=position.getY(i);
+    const wave=Math.sin(x*0.17)+Math.cos(y*0.13)+Math.sin((x+y)*0.075);
+    const mix=Math.max(0,Math.min(1,0.5+wave*0.11));
+    const color=deepColor.clone().lerp(baseColor,mix).lerp(dryColor,Math.max(0,wave)*0.055);
+    groundColors.push(color.r,color.g,color.b);
+  }
+  groundGeometry.setAttribute("color",new THREE.Float32BufferAttribute(groundColors,3));
   const ground=new THREE.Mesh(
-    new THREE.PlaneGeometry(110,110,12,12),
+    groundGeometry,
     new THREE.MeshStandardMaterial({
-      color:0x809d70,
+      vertexColors:true,
       roughness:1,
       metalness:0,
     }),

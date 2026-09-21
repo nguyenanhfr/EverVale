@@ -7,6 +7,9 @@ import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protoc
 import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisual } from "./building-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
+import { createRoadVisual } from "./road-visual";
+import { createAmbientWorldVisual, updateAmbientVisuals, type AmbientVisualRig } from "./ambient-visual";
+import { createCitizenVisual, createDogVisual, updateCitizenVisual, updateDogVisual } from "./actor-visual";
 import {
   constructionVisualState,
   createBuilderObject,
@@ -192,7 +195,7 @@ function routePoint(
 
 function schedulePosition(
   current: WorldState,
-  mesh: THREE.Mesh,
+  mesh: THREE.Object3D,
 ): { x: number; z: number; activity: string } {
   const home = mesh.userData.home as {x:number;z:number};
   const work = mesh.userData.work as {x:number;z:number};
@@ -281,7 +284,7 @@ export function WorldView({
   const routingRef = useRef(onRouting);
   const roadStartRef = useRef(roadStart);
   const visualPopulationRef = useRef(visualPopulationOverride);
-  const citizensRef = useRef<THREE.Mesh[]>([]);
+  const citizensRef = useRef<THREE.Group[]>([]);
   const animalsRef = useRef<THREE.Group[]>([]);
   const propWaterRef = useRef<THREE.Mesh[]>([]);
   const propGlowRef = useRef<THREE.Mesh[]>([]);
@@ -315,18 +318,25 @@ export function WorldView({
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
-    camera.position.set(48, 55, 58);
+    const camera = new THREE.PerspectiveCamera(39, 1, 0.1, 400);
+    camera.position.set(50, 57, 61);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
+    controls.target.set(0, 1.15, 0);
     controls.enableDamping = true;
+    controls.dampingFactor = 0.075;
+    controls.rotateSpeed = 0.55;
+    controls.zoomSpeed = 0.82;
+    controls.panSpeed = 0.72;
+    controls.screenSpacePanning = false;
+    controls.zoomToCursor = true;
     controls.maxPolarAngle = Math.PI * 0.47;
-    controls.minDistance = 22;
+    controls.minDistance = 20;
     controls.maxDistance = 130;
 
     const environment = createEnvironmentVisuals(scene, renderer);
@@ -346,6 +356,7 @@ export function WorldView({
 
     const dynamic = new THREE.Group();
     scene.add(dynamic);
+    let ambientVisual: AmbientVisualRig | null = null;
 
     const preview = new THREE.Group();
     scene.add(preview);
@@ -617,17 +628,7 @@ export function WorldView({
       const current = worldRef.current;
 
       for (const road of current.roads ?? []) {
-        const dx = road.to.x - road.from.x;
-        const dz = road.to.z - road.from.z;
-        const length = Math.hypot(dx, dz);
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(2.4, 0.08, length),
-          new THREE.MeshStandardMaterial({ color: 0x9b8b74, roughness: 1 }),
-        );
-        mesh.position.set((road.from.x + road.to.x) / 2, 0.05, (road.from.z + road.to.z) / 2);
-        mesh.rotation.y = Math.atan2(dx, dz);
-        mesh.receiveShadow = true;
-        dynamic.add(mesh);
+        dynamic.add(createRoadVisual(road, `${current.seed}:${road.id}`));
       }
 
       (current.blockers ?? []).forEach((blocker) => dynamic.add(makeBlocker(blocker)));
@@ -649,6 +650,9 @@ export function WorldView({
         });
         dynamic.add(visual);
       });
+
+      ambientVisual = createAmbientWorldVisual(current, buildCatalogRef.current);
+      dynamic.add(ambientVisual.group);
 
       host.dataset.activeConstruction = String(activeConstruction.length);
       if (activeConstruction[0]) {
@@ -739,11 +743,7 @@ export function WorldView({
       );
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const citizen = new THREE.Mesh(
-          new THREE.CapsuleGeometry(child ? 0.25 : 0.32, child ? 0.55 : 0.8, 4, 8),
-          new THREE.MeshStandardMaterial({ color: child ? 0xd7a86e : 0x6f7f8d, roughness: 0.92 }),
-        );
-        citizen.castShadow = i < 18;
+        const citizen = createCitizenVisual(i, child, i < 18);
         citizen.userData.index = i;
         citizen.userData.child = child;
         const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
@@ -792,20 +792,7 @@ export function WorldView({
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
 
       if (homes.length > 0) {
-        const dog = new THREE.Group();
-        const fur = new THREE.MeshStandardMaterial({ color: 0x9a6a45, roughness: 1 });
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.42), fur);
-        body.position.y = 0.45;
-        body.castShadow = true;
-        dog.add(body);
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), fur);
-        head.position.set(0.55, 0.55, 0);
-        head.castShadow = true;
-        dog.add(head);
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.55, 6), fur);
-        tail.rotation.z = Math.PI / 3;
-        tail.position.set(-0.55, 0.62, 0);
-        dog.add(tail);
+        const dog = createDogVisual();
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
@@ -862,10 +849,12 @@ export function WorldView({
         const dz = targetZ - mesh.position.z;
         mesh.position.x += dx * 0.12;
         mesh.position.z += dz * 0.12;
-        if (Math.hypot(dx, dz) > 0.02) {
+        const moving = Math.hypot(dx, dz) > 0.02;
+        if (moving) {
           mesh.rotation.y = Math.atan2(dx, dz);
         }
-        mesh.position.y = 0.65 + Math.sin(time / 220 + i) * 0.035;
+        mesh.position.y = 0;
+        updateCitizenVisual(mesh, time, moving, i);
         mesh.userData.activity = scheduled.activity;
       });
 
@@ -917,6 +906,7 @@ export function WorldView({
         dog.position.x = home.x + Math.cos(t) * radius;
         dog.position.z = home.z + Math.sin(t * 0.8) * radius;
         dog.rotation.y = -t + Math.PI / 2;
+        updateDogVisual(dog, time + i * 140);
       });
 
       propWaterRef.current.forEach((water, i) => {
@@ -933,6 +923,7 @@ export function WorldView({
         const material = glow.material as THREE.MeshStandardMaterial;
         material.emissiveIntensity = 0.18 + nightFactor * 1.45;
       });
+      if (ambientVisual) updateAmbientVisuals(ambientVisual, time, nightFactor);
 
       controls.update();
       renderer.render(scene, camera);
