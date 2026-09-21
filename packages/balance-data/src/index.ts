@@ -23,7 +23,7 @@ type RawBalance = {
 };
 
 type RawContent = {
-  buildings: Record<string, { name: string; tech_tier: number }>;
+  buildings: Record<string, { name: string; category: string; tech_tier: number }>;
 };
 
 type RawCombat = {
@@ -162,6 +162,7 @@ function mapActor(
 export interface BuildCatalogEntry {
   id: string;
   name: string;
+  category: string;
   techTier: number;
   moneyCost: number;
   varumCost: number;
@@ -274,6 +275,7 @@ export function loadGameData(): LoadedGameData {
       return {
         id,
         name: item.name,
+        category: item.category,
         techTier: item.tech_tier,
         moneyCost: def.moneyCost,
         varumCost: def.varumCost,
