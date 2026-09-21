@@ -1,0 +1,34 @@
+version: "1"
+source_board:
+  name: "cozy_town_character_lineup.png"
+  origin: "ChatGPT conversation-generated EverVale people reference board"
+  generated: true
+  runtime_dependency: false
+  purpose: "img2threejs-style reconstruction reference only"
+
+reconstructions:
+  builder:
+    source_cell: { row: 1, column: 0, columns: 6, rows: 4 }
+    runtime_factory: "apps/client/src/world/actors/generated/sculpted-chibi-factory.ts"
+    target_style: "cozy stylized chibi, smooth rounded silhouette, hard hat, safety vest, hammer"
+  teacher:
+    source_cell: { row: 1, column: 2, columns: 6, rows: 4 }
+    runtime_factory: "apps/client/src/world/actors/generated/sculpted-chibi-factory.ts"
+    target_style: "cozy stylized chibi, bun, round glasses, cardigan, long skirt, books"
+  utility_technician:
+    source_cell: { row: 1, column: 5, columns: 6, rows: 4 }
+    runtime_factory: "apps/client/src/world/actors/generated/sculpted-chibi-factory.ts"
+    target_style: "cozy stylized chibi, blue utility uniform, cap, shoulder bag, wrench"
+
+method:
+  pipeline: "img2threejs-inspired code-only procedural reconstruction"
+  geometry:
+    - "ellipsoid head and hands"
+    - "lathed tapered torso"
+    - "tapered limbs"
+    - "authored facial landmarks"
+    - "role-specific headwear and carried props"
+  excluded:
+    - "runtime image billboard"
+    - "generic sphere-head / box-body proxy"
+    - "photogrammetry"
