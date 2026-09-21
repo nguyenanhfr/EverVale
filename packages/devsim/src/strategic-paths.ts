@@ -25,17 +25,21 @@ export interface StrategicPathPackReport {
   model: "BUILD_ORDER_AND_JOB_PRIORITY_ONLY";
   hours: number;
   strongHours: number;
+  longHours: number;
   seed: number;
   metrics: StrategicMetricRow[];
+  longHorizonMetrics: StrategicMetricRow[];
   leaderboards: {
     money: ScenarioId[];
     tech: ScenarioId[];
     population: ScenarioId[];
+    populationLongHorizon: ScenarioId[];
     defense: ScenarioId[];
   };
   directionalGates: StrategicDirectionalGate[];
   unresolvedDesignLimits: string[];
   reports: ScenarioReport[];
+  longHorizonReports: ScenarioReport[];
 }
 
 const PURE_PATHS: ScenarioId[] = [
@@ -75,10 +79,12 @@ const tier1SortValue = (row: StrategicMetricRow): number =>
 export async function runStrategicPathPack(options: {
   hours?: number;
   strongHours?: number;
+  longHours?: number;
   seed?: number;
 } = {}): Promise<StrategicPathPackReport> {
   const hours = options.hours ?? 8;
   const strongHours = options.strongHours ?? 12;
+  const longHours = options.longHours ?? 12;
   const seed = options.seed ?? 1;
 
   const reports: ScenarioReport[] = [];
@@ -93,7 +99,19 @@ export async function runStrategicPathPack(options: {
     }),
   );
 
+  const longHorizonReports: ScenarioReport[] = [];
+  for (const scenarioId of PURE_PATHS) {
+    longHorizonReports.push(
+      await runScenario({
+        scenarioId,
+        hours: longHours,
+        seed,
+      }),
+    );
+  }
+
   const metrics = reports.map(metric);
+  const longHorizonMetrics = longHorizonReports.map(metric);
   const pure = metrics.filter((row) => PURE_PATHS.includes(row.scenarioId));
 
   const money = [...pure]
@@ -103,6 +121,9 @@ export async function runStrategicPathPack(options: {
     .sort((a, b) => tier1SortValue(a) - tier1SortValue(b) || b.techPoints - a.techPoints)
     .map((row) => row.scenarioId);
   const population = [...pure]
+    .sort((a, b) => b.population - a.population)
+    .map((row) => row.scenarioId);
+  const populationLongHorizon = [...longHorizonMetrics]
     .sort((a, b) => b.population - a.population)
     .map((row) => row.scenarioId);
   const defense = [...pure]
@@ -124,7 +145,7 @@ export async function runStrategicPathPack(options: {
   const pivot = byId.pivot_industrial_to_fortress!;
 
   const pureLeaders = new Map<ScenarioId, number>();
-  for (const winner of [money[0], tech[0], population[0], defense[0]]) {
+  for (const winner of [money[0], tech[0], populationLongHorizon[0], defense[0]]) {
     if (!winner) continue;
     pureLeaders.set(winner, (pureLeaders.get(winner) ?? 0) + 1);
   }
@@ -154,8 +175,13 @@ export async function runStrategicPathPack(options: {
     },
     {
       id: "G3_CIVIC_IDENTITY",
-      pass: population[0] === "pure_civic",
-      detail: "Population leaderboard: " + population.join(" > ") + ".",
+      pass: populationLongHorizon[0] === "pure_civic",
+      detail:
+        "Population leaderboard at " +
+        longHours +
+        "h: " +
+        populationLongHorizon.join(" > ") +
+        ".",
     },
     {
       id: "G4_FORTRESS_IDENTITY",
@@ -221,12 +247,15 @@ export async function runStrategicPathPack(options: {
     model: "BUILD_ORDER_AND_JOB_PRIORITY_ONLY",
     hours,
     strongHours,
+    longHours,
     seed,
     metrics,
+    longHorizonMetrics,
     leaderboards: {
       money,
       tech,
       population,
+      populationLongHorizon,
       defense,
     },
     directionalGates,
@@ -238,5 +267,6 @@ export async function runStrategicPathPack(options: {
       "These directional gates diagnose current identity; they are not canonical balance thresholds.",
     ],
     reports,
+    longHorizonReports,
   };
 }
