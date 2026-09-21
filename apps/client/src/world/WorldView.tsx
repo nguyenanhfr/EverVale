@@ -7,7 +7,8 @@ import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protoc
 import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisualFromRegistry } from "./buildings/building-visual-registry";
 import { createRoadVisual } from "./road-visual";
-import { animateCitizenVisual, createCitizenVisual } from "./actors/citizen-visual";
+import { animateCitizenVisual } from "./actors/citizen-visual";
+import { createCitizenVisualFromRegistry } from "./actors/citizen-visual-registry";
 import { createDogVisual } from "./actors/animal-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
@@ -201,7 +202,7 @@ function routePoint(
 
 function schedulePosition(
   current: WorldState,
-  mesh: THREE.Mesh,
+  mesh: THREE.Object3D,
 ): { x: number; z: number; activity: string } {
   const home = mesh.userData.home as {x:number;z:number};
   const work = mesh.userData.work as {x:number;z:number};
@@ -290,7 +291,7 @@ export function WorldView({
   const routingRef = useRef(onRouting);
   const roadStartRef = useRef(roadStart);
   const visualPopulationRef = useRef(visualPopulationOverride);
-  const citizensRef = useRef<THREE.Mesh[]>([]);
+  const citizensRef = useRef<THREE.Object3D[]>([]);
   const animalsRef = useRef<THREE.Object3D[]>([]);
   const propWaterRef = useRef<THREE.Mesh[]>([]);
   const propGlowRef = useRef<THREE.Mesh[]>([]);
@@ -769,7 +770,13 @@ export function WorldView({
           child,
           child ? "school" : adultJobBuilding?.definitionId,
         );
-        const citizen = createCitizenVisual(current.seed, i, child, role, i < 6);
+        const citizen = createCitizenVisualFromRegistry({
+          worldSeed: current.seed,
+          presentationSlot: i,
+          child,
+          role,
+          castShadow: i < 6,
+        });
         citizen.userData.index = i;
         citizen.userData.child = child;
         citizen.userData.role = role;
