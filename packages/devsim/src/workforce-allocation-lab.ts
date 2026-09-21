@@ -198,6 +198,16 @@ function allocateCategoryFloorThenPriority(
     const candidates = active
       .filter((unit) => unit.category === category)
       .sort((a, b) => b.effectivePriority - a.effectivePriority || a.id.localeCompare(b.id));
+
+    if (category === "utilities") {
+      for (const target of candidates) {
+        if (available <= 0) break;
+        assignment[target.id] = 1;
+        available -= 1;
+      }
+      continue;
+    }
+
     const target = candidates[0];
     if (!target) continue;
     assignment[target.id] = 1;
