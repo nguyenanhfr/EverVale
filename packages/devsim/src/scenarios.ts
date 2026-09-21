@@ -1,5 +1,6 @@
 import { loadAuditBalanceData } from "@evervale/balance-data";
 import type { BuildingDefinition } from "@evervale/domain/world.types";
+import type { WorkforceAllocator } from "@evervale/domain/advance-world";
 import {
   SimHarness,
   type SimActionResult,
@@ -335,6 +336,7 @@ export interface ScenarioRunOptions {
   seed?: number;
   stepSeconds?: number;
   buildingOverrides?: Record<string, Partial<BuildingDefinition>>;
+  workforceAllocator?: WorkforceAllocator;
   buildPlan?: string[];
   policyTransitions?: ScenarioPolicyTransition[];
   resourceTransitions?: ScenarioResourceTransition[];
