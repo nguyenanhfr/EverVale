@@ -11,6 +11,7 @@ import {
   type ScenarioReport,
 } from "./scenarios.js";
 import type { BuildingDefinition } from "@evervale/domain/world.types";
+import { runStrategicPathPack } from "./strategic-paths.js";
 
 function flag(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -68,6 +69,8 @@ function compact(report: ScenarioReport): Record<string, unknown> {
       powerZeroHours: Number((report.ledger.timeAtPowerZeroSeconds / 3600).toFixed(2)),
       waterZeroHours: Number((report.ledger.timeAtWaterZeroSeconds / 3600).toFixed(2)),
     },
+    strategicPolicy: report.strategicPolicy,
+    combatSummary: report.combatSummary,
     diagnostics: report.diagnostics,
   };
 }
@@ -126,6 +129,15 @@ async function main(): Promise<void> {
       reports.push(compact(await runScenario({ scenarioId, hours, seed })));
     }
     console.log(JSON.stringify(reports, null, 2));
+    return;
+  }
+
+  if (command === "paths") {
+    const hours = numberFlag(args, "--hours", 8);
+    const strongHours = numberFlag(args, "--strong-hours", 12);
+    const seed = numberFlag(args, "--seed", 1);
+    const report = await runStrategicPathPack({ hours, strongHours, seed });
+    console.log(JSON.stringify(report, null, 2));
     return;
   }
 
@@ -201,6 +213,7 @@ async function main(): Promise<void> {
     "Commands:",
     "  scenario <id> [--hours 8] [--seed 1] [--series] [--full]",
     "  baseline [--hours 8] [--seed 1]",
+    "  paths [--hours 8] [--strong-hours 12] [--seed 1]",
     "  roi",
     "  graph",
     "  authority-test",
