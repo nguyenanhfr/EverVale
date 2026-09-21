@@ -104,7 +104,7 @@ export function createCitizenVisual(
 
   model.add(combinedMesh([
     transformed(new THREE.SphereGeometry(0.235, 9, 7), 0, 1.58, 0),
-  ], skin, castShadow));
+  ], skin, false));
 
   const darkGeometry = [
     transformed(new THREE.CapsuleGeometry(0.075, 0.34, 3, 6), -0.13, 0.38, 0),
@@ -113,7 +113,7 @@ export function createCitizenVisual(
     transformed(new THREE.BoxGeometry(0.16, 0.10, 0.27), 0.13, 0.12, 0.07),
     transformed(new THREE.SphereGeometry(0.245, 9, 6), 0, 1.69, -0.015, 0, 0, 0, 1.02, 0.54, 1.02),
   ];
-  model.add(combinedMesh(darkGeometry, hair, castShadow));
+  model.add(combinedMesh(darkGeometry, hair, false));
 
   const accentGeometry: THREE.BufferGeometry[] = [];
   if (index % 5 === 1) {

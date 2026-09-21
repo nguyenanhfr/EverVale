@@ -790,6 +790,7 @@ export function WorldView({
       host.dataset.disconnectedRoutes = String(disconnectedRoutes);
       host.dataset.routedCitizens = String(citizensRef.current.length);
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
+      renderer.shadowMap.needsUpdate = true;
 
       if (homes.length > 0) {
         const dog = createDogVisual();
@@ -924,6 +925,10 @@ export function WorldView({
         material.emissiveIntensity = 0.18 + nightFactor * 1.45;
       });
       if (ambientVisual) updateAmbientVisuals(ambientVisual, time, nightFactor);
+
+      // Shadows are intentionally refreshed at a lower cadence than the color pass.
+      // This preserves soft grounding while avoiding an expensive 2048px shadow render every frame.
+      if (frame % 12 === 0) renderer.shadowMap.needsUpdate = true;
 
       controls.update();
       renderer.render(scene, camera);
