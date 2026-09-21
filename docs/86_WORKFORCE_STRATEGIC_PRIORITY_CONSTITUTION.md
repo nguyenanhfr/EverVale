@@ -1074,7 +1074,7 @@ After Workforce policy is measurable:
 
 # 41. Validated candidate result
 
-Measured evidence is recorded in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md` on the DevSim tooling branch / PR #12.
+Measured evidence is now merged on `main` in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md` (DevSim validation merge `effc6635`).
 
 Final candidate semantics validated over 8 simulated hours:
 
