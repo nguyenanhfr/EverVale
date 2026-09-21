@@ -195,9 +195,27 @@ function routePoint(
   route: VisualRoute | undefined,
   t: number,
   fallback: {x:number;z:number},
+  laneOffset = 0,
+  phaseOffset = 0,
 ): {x:number;z:number} {
   if (!route?.connected || route.points.length === 0) return fallback;
-  return samplePolyline(route.points, t);
+
+  const sampleT = Math.max(0, Math.min(1, t + phaseOffset));
+  const point = samplePolyline(route.points, sampleT);
+  if (Math.abs(laneOffset) < 0.001 || route.points.length < 2) return point;
+
+  const epsilon = 0.012;
+  const before = samplePolyline(route.points, Math.max(0, sampleT - epsilon));
+  const after = samplePolyline(route.points, Math.min(1, sampleT + epsilon));
+  const dx = after.x - before.x;
+  const dz = after.z - before.z;
+  const length = Math.hypot(dx, dz);
+  if (length < 0.001) return point;
+
+  return {
+    x: point.x + (-dz / length) * laneOffset,
+    z: point.z + (dx / length) * laneOffset,
+  };
 }
 
 function schedulePosition(
@@ -212,6 +230,9 @@ function schedulePosition(
   const leisureToHome = mesh.userData.leisureToHome as VisualRoute | undefined;
   const homeToShelter = mesh.userData.homeToShelter as VisualRoute | undefined;
   const child = Boolean(mesh.userData.child);
+  const presentationSlot = Number(mesh.userData.index ?? 0);
+  const laneOffset = Number(mesh.userData.laneOffset ?? 0);
+  const routePhaseOffset = Number(mesh.userData.routePhaseOffset ?? 0);
   const hour = ((current.simulationSeconds % 1440) / 1440) * 24;
 
   if (current.combat && current.combat.status !== "RESOLVED") {
@@ -220,6 +241,8 @@ function schedulePosition(
         homeToShelter,
         Math.min(1, current.combat.elapsedSeconds / 5),
         home,
+        laneOffset,
+        routePhaseOffset,
       ),
       activity: homeToShelter?.connected ? "SHELTER" : "SHELTER_BLOCKED",
     };
@@ -234,10 +257,37 @@ function schedulePosition(
   ) => {
     const t = Math.max(0, Math.min(1, (hour - startHour) / Math.max(0.01, endHour - startHour)));
     return {
-      ...routePoint(route, t, fallback),
+      ...routePoint(route, t, fallback, laneOffset, routePhaseOffset),
       activity: route?.connected ? activity : `${activity}_BLOCKED`,
     };
   };
+
+  // Presentation-only living-world pass: keep a small, deterministic share of
+  // adult citizens visible on streets during daytime instead of parking every
+  // visual actor inside a workplace for the whole work block. This never
+  // changes server schedules, routing authority, economy, or citizen state.
+  const ambientErrand =
+    !child &&
+    hour >= 8.5 &&
+    hour < 19.5 &&
+    presentationSlot % 3 === 1 &&
+    workToLeisure?.connected;
+
+  if (ambientErrand) {
+    const cycle =
+      (current.simulationSeconds / 105 + presentationSlot * 0.217) % 1;
+    const thereAndBack = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2;
+    return {
+      ...routePoint(
+        workToLeisure,
+        thereAndBack,
+        work,
+        laneOffset,
+        routePhaseOffset * 0.5,
+      ),
+      activity: "ERRAND",
+    };
+  }
 
   if (child) {
     if (hour < 7.5) return { ...home, activity: "HOME" };
@@ -325,7 +375,7 @@ export function WorldView({
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 800);
     camera.position.set(46, 50, 55);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -336,10 +386,22 @@ export function WorldView({
     controls.target.set(0, 1.15, 0);
     controls.enableDamping = true;
     controls.dampingFactor = 0.075;
-    controls.minPolarAngle = 0.62;
-    controls.maxPolarAngle = 1.08;
-    controls.minDistance = 22;
-    controls.maxDistance = 120;
+    controls.enableRotate = true;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+    controls.screenSpacePanning = true;
+    controls.zoomToCursor = true;
+    controls.rotateSpeed = 0.72;
+    controls.panSpeed = 0.95;
+    controls.zoomSpeed = 1.1;
+    controls.minPolarAngle = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 - 0.025;
+    controls.minDistance = 5;
+    controls.maxDistance = 220;
+
+    host.dataset.cameraMode = "free-preview";
+    host.dataset.cameraMinDistance = String(controls.minDistance);
+    host.dataset.cameraMaxDistance = String(controls.maxDistance);
 
     const environment = createEnvironmentVisuals(scene, renderer, worldRef.current.seed);
     const ambient = createAmbientVisuals(scene);
@@ -810,9 +872,13 @@ export function WorldView({
           homeToShelter.connected;
 
         const angle = (i * 2.399963229728653) % (Math.PI * 2);
-        const radius = 0.35 + (i % 4) * 0.12;
+        const radius = 0.58 + (i % 5) * 0.16;
         citizen.userData.offsetX = Math.cos(angle) * radius;
         citizen.userData.offsetZ = Math.sin(angle) * radius;
+        const lanePattern = [-0.68, 0.68, -0.24, 0.24] as const;
+        citizen.userData.laneOffset = lanePattern[i % lanePattern.length];
+        citizen.userData.routePhaseOffset =
+          (((i * 37) % 11) - 5) * 0.008;
         citizen.userData.activity = "HOME";
         dynamic.add(citizen);
         citizensRef.current.push(citizen);
