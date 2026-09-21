@@ -1,0 +1,99 @@
+version: "0.1"
+status: "CANONICAL_VISUAL_PRESENTATION"
+authority:
+  art_direction: "docs/02_WORLD_ART.md"
+  building_art: "docs/37_BUILDING_CATALOG_AND_ART.md"
+  citizen_roster: "docs/46_CITIZEN_VISUAL_ROSTER.md"
+  citizen_actor_catalog: "docs/47_CITIZEN_ACTOR_CATALOG.md"
+  variation_contract: "docs/78_VISUAL_IDENTITY_VARIATION_SYSTEM.md"
+
+world_dialects:
+  hearthstone:
+    wall: [cream_plaster, warm_stone]
+    roof: [weathered_brown, dark_slate]
+    trim: dark_timber
+    accent: copper
+    dressing: [flower_boxes, warm_lamps, civic_planters]
+  willowbrook:
+    wall: [pale_sage_plaster, cream_plaster]
+    roof: [green_grey_slate, dark_slate]
+    trim: light_timber
+    accent: copper
+    dressing: [gardens, mossy_stone, leafy_edges]
+  amberfield:
+    wall: [ochre_plaster, warm_brick]
+    roof: [rust_brown, warm_brown]
+    trim: dark_timber
+    accent: brass
+    dressing: [crates, baskets, dry_stone, rural_edges]
+  bluebell:
+    wall: [cool_cream, pale_masonry]
+    roof: [blue_grey_slate, green_slate]
+    trim: medium_timber
+    accent: copper
+    dressing: [clean_civic_edges, blue_green_planting]
+
+building_families:
+  town_center:
+    variants: [clock_hall, bell_porch_hall, twin_gable_hall]
+  house_small:
+    variants: [flower_gable, side_porch, dormer_cottage, stone_end_cottage, craft_cottage, laundry_garden]
+  workshop:
+    variants: [wheel_yard, forge_stack, loading_shed, saw_court]
+  power_plant:
+    variants: [twin_stack, turbine_hall, generator_annex]
+  water_plant:
+    variants: [twin_cistern, pump_court, filter_house]
+  school:
+    variants: [bell_gable, courtyard_school, classroom_annex]
+  park:
+    variants: [fountain_grove, duck_pond, play_lawn, reading_garden]
+  guard_post:
+    variants: [lodge_yard, watch_court, gate_lodge]
+  farm:
+    variants: [barnyard, silo_farm, orchard_edge, animal_court]
+  restaurant:
+    variants: [awning_terrace, courtyard_kitchen, corner_cafe, lantern_porch]
+  builders_yard:
+    variants: [hoist_yard, saw_shed, stone_yard, scaffold_court]
+
+citizen_roles:
+  school_child:
+    silhouette: [small_body, backpack, optional_cap]
+    props: [book, toy, school_bag]
+  casual_resident:
+    silhouette: [coat_or_shirt, varied_hair, optional_hat]
+    props: [satchel, shopping_bag, none]
+  workshop_worker:
+    silhouette: [apron_or_vest, tool_pouch]
+    props: [crate, wrench, gloves]
+  utility_technician:
+    silhouette: [dark_overalls, utility_cap]
+    props: [tool_bag, inspection_device]
+  teacher:
+    silhouette: [tidy_coat, book_shape]
+    props: [book, tablet]
+  guard:
+    silhouette: [padded_vest, compact_helmet]
+    props: [shield, patrol_gear]
+  builder:
+    silhouette: [hard_hat, vest, tool_belt]
+    props: [hammer, board, toolbox]
+  farmer:
+    silhouette: [wide_hat, boots]
+    props: [basket, tool]
+  cafe_worker:
+    silhouette: [apron, tray]
+    props: [tray, towel]
+  service_crew:
+    silhouette: [workwear, service_cap]
+    props: [toolbox, broom]
+
+rules:
+  deterministic: true
+  gameplay_authority: false
+  adjacent_same_family_anti_clone_radius_m: 18
+  world_seed_selects_dialect: true
+  building_variant_requires_structural_or_dressing_difference: true
+  common_housing_min_variants: 6
+  common_workplace_min_variants: 3
