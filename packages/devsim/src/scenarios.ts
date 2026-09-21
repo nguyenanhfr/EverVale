@@ -30,6 +30,18 @@ export interface ScenarioPolicyTransition {
   buildingOverrides: Record<string, Partial<BuildingDefinition>>;
 }
 
+export interface ScenarioResourceTransition {
+  atSeconds: number;
+  label: string;
+  resources: {
+    money?: number;
+    power?: number;
+    water?: number;
+    varum?: number;
+    techPoints?: number;
+  };
+}
+
 export interface ScenarioDefinition {
   id: ScenarioId;
   description: string;
@@ -37,6 +49,7 @@ export interface ScenarioDefinition {
   policyModel?: "RUNTIME_DEFAULT" | "BUILD_ORDER_AND_JOB_PRIORITY";
   policyOverrides?: Record<string, Partial<BuildingDefinition>>;
   policyTransitions?: ScenarioPolicyTransition[];
+  resourceTransitions?: ScenarioResourceTransition[];
   triggerWaveAtSeconds?: number[];
   combatStressExtraEnemies?: Record<string, number>;
   autoRepair?: boolean;
@@ -322,6 +335,8 @@ export interface ScenarioRunOptions {
   seed?: number;
   stepSeconds?: number;
   buildingOverrides?: Record<string, Partial<BuildingDefinition>>;
+  policyTransitions?: ScenarioPolicyTransition[];
+  resourceTransitions?: ScenarioResourceTransition[];
   includeSeries?: boolean;
 }
 
@@ -383,6 +398,7 @@ export interface ScenarioReport {
   strategicPolicy: {
     model: "RUNTIME_DEFAULT" | "BUILD_ORDER_AND_JOB_PRIORITY";
     transitionsApplied: string[];
+    resourceFixturesApplied: string[];
   };
   combatSummary: {
     resolvedEvents: number;
@@ -448,6 +464,15 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   let nextDecisionAt = 0;
   let nextWaveIndex = 0;
   const policyTransitionsApplied: string[] = [];
+  const resourceFixturesApplied: string[] = [];
+  const policyTransitions = [
+    ...(definition.policyTransitions ?? []),
+    ...(options.policyTransitions ?? []),
+  ];
+  const resourceTransitions = [
+    ...(definition.resourceTransitions ?? []),
+    ...(options.resourceTransitions ?? []),
+  ];
   let estimatedMoneyIncome = 0;
   let estimatedUpkeep = 0;
   let timeAtMoneyCapSeconds = 0;
@@ -463,7 +488,7 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   for (let elapsed = 0; elapsed < horizonSeconds; elapsed += stepSeconds) {
     world = await harness.world();
 
-    for (const transition of definition.policyTransitions ?? []) {
+    for (const transition of policyTransitions) {
       if (
         elapsed >= transition.atSeconds &&
         !policyTransitionsApplied.includes(transition.label)
@@ -477,6 +502,24 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
           elapsed,
           `Applied DevSim policy transition ${transition.label}.`,
         );
+      }
+    }
+
+    for (const transition of resourceTransitions) {
+      if (
+        elapsed >= transition.atSeconds &&
+        !resourceFixturesApplied.includes(transition.label)
+      ) {
+        harness.applyResourceFixture(transition.resources);
+        resourceFixturesApplied.push(transition.label);
+        pushOnce(
+          diagnostics,
+          `RESOURCE_FIXTURE_${transition.label}`,
+          "INFO",
+          elapsed,
+          `Applied DevSim resource fixture ${transition.label}.`,
+        );
+        world = await harness.world();
       }
     }
 
@@ -690,6 +733,7 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
     strategicPolicy: {
       model: definition.policyModel ?? "RUNTIME_DEFAULT",
       transitionsApplied: policyTransitionsApplied,
+      resourceFixturesApplied,
     },
     combatSummary: {
       resolvedEvents: world.events.filter((event) => event.type === "COMBAT_RESOLVED").length,
