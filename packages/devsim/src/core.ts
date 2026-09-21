@@ -289,6 +289,41 @@ export class SimHarness {
     return result;
   }
 
+
+  async repairBuilding(buildingId: string): Promise<SimActionResult> {
+    const before = await this.world();
+    const command = parseWorldCommand({
+      type: "REPAIR_BUILDING",
+      commandId: randomUUID(),
+      expectedRevision: before.revision,
+      payload: { buildingId },
+    });
+
+    try {
+      const after = await this.service.command(this.ownerId, command);
+      const result: SimActionResult = {
+        accepted: true,
+        type: command.type,
+        atSeconds: after.simulationSeconds,
+        moneyDelta: after.resources.money - before.resources.money,
+        varumDelta: after.resources.varum - before.resources.varum,
+      };
+      this.actions.push(result);
+      return result;
+    } catch (error) {
+      const result: SimActionResult = {
+        accepted: false,
+        type: command.type,
+        atSeconds: before.simulationSeconds,
+        moneyDelta: 0,
+        varumDelta: 0,
+        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+      };
+      this.actions.push(result);
+      return result;
+    }
+  }
+
   async triggerWave(): Promise<SimActionResult> {
     const before = await this.world();
     const command = parseWorldCommand({
