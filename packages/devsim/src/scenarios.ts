@@ -344,6 +344,17 @@ export interface ScenarioReport {
     acceptedCount: number;
     nextBuilding: string | null;
   };
+  strategicPolicy: {
+    model: "RUNTIME_DEFAULT" | "BUILD_ORDER_AND_JOB_PRIORITY";
+    transitionsApplied: string[];
+  };
+  combatSummary: {
+    resolvedEvents: number;
+    finalOutcome: string | null;
+    damagedBuildings: number;
+    disabledBuildings: number;
+    totalConditionLoss: number;
+  };
   series?: SimSample[];
 }
 
@@ -371,9 +382,13 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   if (!Number.isFinite(options.hours) || options.hours <= 0) throw new Error("INVALID_HOURS");
   if (!Number.isFinite(stepSeconds) || stepSeconds <= 0) throw new Error("INVALID_STEP_SECONDS");
 
+  const mergedOverrides: Record<string, Partial<BuildingDefinition>> = {
+    ...(definition.policyOverrides ?? {}),
+    ...(options.buildingOverrides ?? {}),
+  };
   const harnessOptions: SimHarnessOptions = {
     seed: options.seed ?? 1,
-    ...(options.buildingOverrides ? { buildingOverrides: options.buildingOverrides } : {}),
+    ...(Object.keys(mergedOverrides).length > 0 ? { buildingOverrides: mergedOverrides } : {}),
   };
   const harness = new SimHarness(harnessOptions);
   let world = await harness.initialize();
@@ -395,7 +410,8 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   const series: SimSample[] = [initial];
   let planIndex = 0;
   let nextDecisionAt = 0;
-  let waveTriggered = false;
+  let nextWaveIndex = 0;
+  const policyTransitionsApplied: string[] = [];
   let estimatedMoneyIncome = 0;
   let estimatedUpkeep = 0;
   let timeAtMoneyCapSeconds = 0;
@@ -410,6 +426,23 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
 
   for (let elapsed = 0; elapsed < horizonSeconds; elapsed += stepSeconds) {
     world = await harness.world();
+
+    for (const transition of definition.policyTransitions ?? []) {
+      if (
+        elapsed >= transition.atSeconds &&
+        !policyTransitionsApplied.includes(transition.label)
+      ) {
+        harness.applyBuildingOverrides(transition.buildingOverrides);
+        policyTransitionsApplied.push(transition.label);
+        pushOnce(
+          diagnostics,
+          `POLICY_TRANSITION_${transition.label}`,
+          "INFO",
+          elapsed,
+          `Applied DevSim policy transition ${transition.label}.`,
+        );
+      }
+    }
 
     const hasConstruction = world.buildings.some(
       (building) => building.constructionState === "BUILDING",
@@ -450,13 +483,24 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
       }
     }
 
+    const waveSchedule = definition.triggerWaveAtSeconds ?? [];
     if (
-      definition.triggerWaveAtSeconds !== undefined &&
-      !waveTriggered &&
-      elapsed >= definition.triggerWaveAtSeconds
+      nextWaveIndex < waveSchedule.length &&
+      elapsed >= (waveSchedule[nextWaveIndex] ?? Number.POSITIVE_INFINITY)
     ) {
       const action = await harness.triggerWave();
-      if (action.accepted) waveTriggered = true;
+      if (action.accepted) {
+        nextWaveIndex += 1;
+      } else if (action.error !== "COMBAT_ACTIVE") {
+        pushOnce(
+          diagnostics,
+          `WAVE_TRIGGER_FAILED_${nextWaveIndex}`,
+          "WARNING",
+          elapsed,
+          `Scheduled DevSim wave failed: ${action.error ?? "UNKNOWN_ERROR"}.`,
+        );
+        nextWaveIndex += 1;
+      }
     }
 
     if (definition.autoRepair) {
@@ -581,7 +625,7 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
     seed: harness.seed,
     requestedHours: options.hours,
     stepSeconds,
-    balanceOverrides: options.buildingOverrides ?? {},
+    balanceOverrides: mergedOverrides,
     initial,
     final,
     milestones,
@@ -603,6 +647,20 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
       requested: definition.buildPlan,
       acceptedCount: planIndex,
       nextBuilding: definition.buildPlan[planIndex] ?? null,
+    },
+    strategicPolicy: {
+      model: definition.policyModel ?? "RUNTIME_DEFAULT",
+      transitionsApplied: policyTransitionsApplied,
+    },
+    combatSummary: {
+      resolvedEvents: world.events.filter((event) => event.type === "COMBAT_RESOLVED").length,
+      finalOutcome: world.combat?.outcome ?? null,
+      damagedBuildings: world.buildings.filter((building) => building.damageState === "DAMAGED").length,
+      disabledBuildings: world.buildings.filter((building) => building.damageState === "DISABLED").length,
+      totalConditionLoss: world.buildings.reduce(
+        (sum, building) => sum + Math.max(0, 100 - building.condition),
+        0,
+      ),
     },
   };
 
