@@ -1,6 +1,6 @@
 # 87 — Workforce Policy Baseline Report v1
 
-Status: **PARTIAL PASS — RUNTIME CAPABILITY GAPS CONFIRMED**
+Status: **SUPERSEDED BASELINE — see docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md**
 
 Date: 2026-09-21
 
@@ -21,7 +21,11 @@ Command:
 pnpm devsim workforce --hours 8 --seed 1
 ```
 
-This report measures current runtime behavior under data-driven policy overlays.
+This report preserves the first failed baseline for audit history.
+
+Its flat-priority conclusions were used to design the category-floor candidate. The validated successor results are recorded in `docs/90_GAMEPLAY_SYSTEM_VALIDATION_V1.md`.
+
+This report measures the earlier runtime behavior under data-driven policy overlays.
 
 It does not change live gameplay balance.
 
