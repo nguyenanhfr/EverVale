@@ -8,6 +8,9 @@ import { createWorkshopVisual } from "./workshop-visual";
 import { createPowerPlantVisual, createWaterPlantVisual } from "./utility-visual";
 import { createSchoolVisual, createGuardPostVisual } from "./civic-visual";
 import { createParkVisual } from "./park-visual";
+import { createRestaurantVisual } from "./commerce-visual";
+import { createFarmVisual } from "./rural-visual";
+import { createBuildersYardVisual } from "./builders-yard-visual";
 import { addBuildingGroundContact } from "./building-contact-visual";
 
 export function createBuildingVisualFromRegistry(
@@ -40,6 +43,15 @@ export function createBuildingVisualFromRegistry(
       break;
     case "guard_post":
       visual = createGuardPostVisual(building, meta, identity);
+      break;
+    case "restaurant":
+      visual = createRestaurantVisual(building, meta, identity);
+      break;
+    case "farm":
+      visual = createFarmVisual(building, meta, identity);
+      break;
+    case "builders_yard":
+      visual = createBuildersYardVisual(building, meta, identity);
       break;
     default:
       visual = createLegacyBuildingVisual(building, meta);
