@@ -102,3 +102,11 @@ devsim:
     - restaurant
   test_hours: 8
   rapid_switch_interval_seconds: 600
+
+gates:
+  balanced_school_zero_staff_max_hours: 1.0
+  balanced_critical_diagnostics_max: 0
+  emergency_recovery_max_hours: 1.5
+  rapid_switch_count: 12
+  opportunity_cost_min_money_difference: 1
+  opportunity_cost_min_tech_difference: 1
