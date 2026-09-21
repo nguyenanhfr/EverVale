@@ -407,6 +407,14 @@ export interface WorkforcePolicyCandidate {
     test_hours: number;
     rapid_switch_interval_seconds: number;
   };
+  gates: {
+    balanced_school_zero_staff_max_hours: number;
+    balanced_critical_diagnostics_max: number;
+    emergency_recovery_max_hours: number;
+    rapid_switch_count: number;
+    opportunity_cost_min_money_difference: number;
+    opportunity_cost_min_tech_difference: number;
+  };
 }
 
 export function loadWorkforcePolicyCandidate(): WorkforcePolicyCandidate {
