@@ -30,6 +30,45 @@ function commandFingerprint(ownerId: string, command: WorldCommand): string {
   });
 }
 
+const READ_CHECKPOINT_SECONDS = 5 * 60;
+
+function materialSimulationBoundaryCrossed(before: WorldState, after: WorldState): boolean {
+  if (
+    before.combat?.id !== after.combat?.id ||
+    before.combat?.status !== after.combat?.status ||
+    before.combat?.outcome !== after.combat?.outcome
+  ) {
+    return true;
+  }
+
+  if (before.events.at(-1)?.id !== after.events.at(-1)?.id) return true;
+  if (before.resources.techTier !== after.resources.techTier) return true;
+  if (before.society.population !== after.society.population) return true;
+
+  const beforeBuildings = new Map(before.buildings.map((building) => [building.id, building]));
+  for (const building of after.buildings) {
+    const previous = beforeBuildings.get(building.id);
+    if (
+      previous &&
+      (
+        previous.constructionState !== building.constructionState ||
+        previous.damageState !== building.damageState
+      )
+    ) {
+      return true;
+    }
+  }
+
+  const beforeBlockers = new Map(before.blockers.map((blocker) => [blocker.id, blocker]));
+  if (beforeBlockers.size !== after.blockers.length) return true;
+  for (const blocker of after.blockers) {
+    const previous = beforeBlockers.get(blocker.id);
+    if (previous && previous.state !== blocker.state) return true;
+  }
+
+  return false;
+}
+
 export interface WorldServiceOptions {
   repository: WorldRepository;
   definitions: SimulationDefinitions;
@@ -81,7 +120,7 @@ export class WorldService {
         if (error instanceof Error && error.message === "WORLD_OWNER_EXISTS") {
           const winner = await this.options.repository.findByOwner(ownerId);
           if (winner) {
-            return this.advanceState(
+            return this.advanceRead(
               this.normalizeWorld(winner),
               this.options.clock.now(),
             );
@@ -90,7 +129,38 @@ export class WorldService {
         throw error;
       }
     }
-    return this.advanceState(existing, this.options.clock.now());
+    return this.advanceRead(existing, this.options.clock.now());
+  }
+
+  private async advanceRead(stored: WorldState, now: Date): Promise<WorldState> {
+    const then = new Date(stored.lastSimulatedAt);
+    const elapsed = Math.max(0, (now.getTime() - then.getTime()) / 1000);
+    const advanced = this.advanceState(stored, now);
+
+    const periodicCheckpoint =
+      stored.speed > 0 &&
+      elapsed >= READ_CHECKPOINT_SECONDS;
+    const materialCheckpoint = materialSimulationBoundaryCrossed(stored, advanced);
+
+    if (!periodicCheckpoint && !materialCheckpoint) return advanced;
+
+    const checkpoint = {
+      ...advanced,
+      revision: stored.revision + 1,
+    };
+
+    try {
+      await this.options.repository.save(checkpoint, stored.revision);
+      return checkpoint;
+    } catch (error) {
+      if (error instanceof Error && error.message === "REVISION_CONFLICT") {
+        const winner = await this.options.repository.findByOwner(stored.ownerId);
+        if (winner) {
+          return this.advanceState(this.normalizeWorld(winner), now);
+        }
+      }
+      throw error;
+    }
   }
 
   async command(ownerId: string, command: WorldCommand): Promise<WorldState> {
