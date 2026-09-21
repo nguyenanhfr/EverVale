@@ -59,6 +59,7 @@ export default function App() {
   const [selectedBuild, setSelectedBuild] = useState<BuildCatalogEntryDto | null>(null);
   const [selectedProp, setSelectedProp] = useState<PropCatalogEntryDto | null>(null);
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [movingPropId, setMovingPropId] = useState<string | null>(null);
   const [propRotation, setPropRotation] = useState(0);
   const [propGroup, setPropGroup] = useState("vegetation");
@@ -139,6 +140,21 @@ export default function App() {
     return view.propCatalog.find((p) => p.id === selectedPropInstance.definitionId) ?? null;
   }, [selectedPropInstance, view]);
 
+  const selectedBuildingInstance = useMemo(
+    () => view?.world.buildings.find((building) => building.id === selectedBuildingId) ?? null,
+    [selectedBuildingId, view],
+  );
+
+  const selectedBuildingMeta = useMemo(() => {
+    if (!view || !selectedBuildingInstance) return null;
+    return view.buildCatalog.find((item) => item.id === selectedBuildingInstance.definitionId) ?? null;
+  }, [selectedBuildingInstance, view]);
+
+  const recentEvents = useMemo(
+    () => [...(view?.world.events ?? [])].slice(-4).reverse(),
+    [view],
+  );
+
   const activePreviewProp = mode === "MOVE_PROP" ? movingPropMeta : selectedProp;
   const activePreviewRotation =
     mode === "MOVE_PROP" ? (movingPropInstance?.rotationY ?? 0) : propRotation;
@@ -147,6 +163,7 @@ export default function App() {
     setMode("SELECT");
     setSelectedBuild(null);
     setSelectedProp(null);
+    setSelectedBuildingId(null);
     setMovingPropId(null);
     setRoadStart(null);
   }, []);
@@ -266,6 +283,7 @@ export default function App() {
         propCatalog={view.propCatalog}
         propRotation={activePreviewRotation}
         selectedPropId={selectedPropId}
+        selectedBuildingId={selectedBuildingId}
         movingPropId={movingPropId}
         roadStart={roadStart}
         visualPopulationOverride={stressCitizens}
@@ -273,6 +291,15 @@ export default function App() {
         onRouting={(routed, disconnected) => setRoutingHealth({ routed, disconnected })}
         onPropSelect={(propId) => {
           setSelectedPropId(propId);
+          if (propId) setSelectedBuildingId(null);
+          setMovingPropId(null);
+          setSelectedBuild(null);
+          setSelectedProp(null);
+          setMode("SELECT");
+        }}
+        onBuildingSelect={(buildingId) => {
+          setSelectedBuildingId(buildingId);
+          if (buildingId) setSelectedPropId(null);
           setMovingPropId(null);
           setSelectedBuild(null);
           setSelectedProp(null);
@@ -284,12 +311,12 @@ export default function App() {
       <header className="topbar hud-panel">
         <div className="brand">EVERVALE <span>M1</span></div>
         <div className="resources">
-          <b>¤ {Math.floor(w.resources.money)}</b>
-          <b>⚡ {Math.floor(w.resources.power)}/{Math.floor(w.resources.powerCap)}</b>
-          <b>💧 {Math.floor(w.resources.water)}/{Math.floor(w.resources.waterCap)}</b>
-          <b>◇ {Math.floor(w.resources.varum)}</b>
-          <b>👥 {w.society.population}/{w.society.housingCapacity}</b>
-          <b>☺ {Math.round(w.society.happiness)}</b>
+          <b className={w.resources.money < 200 ? "resource-chip warning" : "resource-chip"}>¤ {Math.floor(w.resources.money)}/{Math.floor(w.resources.moneyCap)}</b>
+          <b className={w.resources.powerCap > 0 && w.resources.power / w.resources.powerCap < 0.2 ? "resource-chip critical" : "resource-chip"}>⚡ {Math.floor(w.resources.power)}/{Math.floor(w.resources.powerCap)}</b>
+          <b className={w.resources.waterCap > 0 && w.resources.water / w.resources.waterCap < 0.2 ? "resource-chip critical" : "resource-chip"}>💧 {Math.floor(w.resources.water)}/{Math.floor(w.resources.waterCap)}</b>
+          <b className="resource-chip">◇ {Math.floor(w.resources.varum)}/{Math.floor(w.resources.varumCap)}</b>
+          <b className={w.society.population >= w.society.housingCapacity ? "resource-chip warning" : "resource-chip"}>👥 {w.society.population}/{w.society.housingCapacity}</b>
+          <b className={w.society.happiness < 55 ? "resource-chip warning" : "resource-chip"}>☺ {Math.round(w.society.happiness)}</b>
           <b title="Town beauty from decor">✦ {w.society.beauty.toFixed(1)}</b>
           <b>T{w.resources.techTier} · {Math.floor(w.resources.techPoints)}</b>
           <b data-testid="world-clock">🕒 {worldClock}</b>
@@ -308,6 +335,23 @@ export default function App() {
       </header>
 
       {combatLabel && <div className="combat-banner" data-testid="combat-status">{combatLabel}</div>}
+
+      {recentEvents.length > 0 && (
+        <aside className="event-stack" aria-label="Town events">
+          {recentEvents.map((event, index) => (
+            <div
+              key={event.id}
+              className={`event-card severity-${Math.max(0, Math.min(3, Math.floor(event.severity)))}`}
+            >
+              <span className="event-dot" />
+              <div>
+                <strong>{event.type.replaceAll("_", " ")}</strong>
+                <small data-testid={index === 0 ? "event-summary" : undefined}>{event.summary}</small>
+              </div>
+            </div>
+          ))}
+        </aside>
+      )}
 
       <aside className="build-panel hud-panel">
         <div className="tool-tabs">
@@ -361,6 +405,7 @@ export default function App() {
                   setSelectedBuild(item);
                   setSelectedProp(null);
                   setSelectedPropId(null);
+                  setSelectedBuildingId(null);
                   setRoadStart(null);
                 }}
               >
@@ -393,6 +438,7 @@ export default function App() {
                     setSelectedProp(item);
                     setSelectedBuild(null);
                     setSelectedPropId(null);
+                    setSelectedBuildingId(null);
                     setMovingPropId(null);
                     setPropRotation(0);
                   }}
@@ -515,13 +561,6 @@ export default function App() {
           </div>
         )}
 
-        {w.events.length > 0 && (
-          <div className="event-log">
-            <strong>Last event</strong>
-            <small data-testid="event-summary">{w.events[w.events.length - 1]?.summary}</small>
-          </div>
-        )}
-
         <button
           className="danger"
           disabled={!!w.combat && w.combat.status !== "RESOLVED"}
@@ -530,6 +569,54 @@ export default function App() {
           Test surprise wave
         </button>
       </aside>
+
+      {selectedBuildingInstance && mode === "SELECT" && (
+        <aside className="building-inspector hud-panel" data-testid="building-inspector">
+          <div className="inspector-heading">
+            <div>
+              <span className="eyebrow">BUILDING</span>
+              <strong>{selectedBuildingMeta?.name ?? selectedBuildingInstance.definitionId.replaceAll("_", " ")}</strong>
+            </div>
+            <button onClick={() => setSelectedBuildingId(null)} aria-label="Close building inspector">×</button>
+          </div>
+          <div className="inspector-state">
+            <span className={`state-pill ${selectedBuildingInstance.damageState.toLowerCase()}`}>
+              {selectedBuildingInstance.damageState}
+            </span>
+            <span>{Math.round(selectedBuildingInstance.condition)}% condition</span>
+          </div>
+          <div className="inspector-grid">
+            <div><small>Workers</small><b>{selectedBuildingInstance.workersAssigned}/{selectedBuildingMeta?.workers ?? "—"}</b></div>
+            <div><small>Priority</small><b>{selectedBuildingInstance.priority}</b></div>
+            <div><small>Upkeep</small><b>¤{selectedBuildingMeta?.upkeep ?? 0}/cycle</b></div>
+            <div><small>Role</small><b>{selectedBuildingMeta?.jobCategory?.replaceAll("_", " ") ?? "support"}</b></div>
+          </div>
+          {selectedBuildingInstance.constructionState === "BUILDING" ? (
+            <div className="inspector-callout">
+              Construction · {Math.max(0, Math.ceil(selectedBuildingInstance.constructionRemainingSeconds))}s remaining
+            </div>
+          ) : (
+            <div className="inspector-output">
+              {(selectedBuildingMeta?.moneyPerWorker ?? 0) > 0 && <span>¤ +{selectedBuildingMeta!.moneyPerWorker}/worker</span>}
+              {(selectedBuildingMeta?.powerProduction ?? 0) > 0 && <span>⚡ +{selectedBuildingMeta!.powerProduction}</span>}
+              {(selectedBuildingMeta?.powerUse ?? 0) > 0 && <span>⚡ −{selectedBuildingMeta!.powerUse}</span>}
+              {(selectedBuildingMeta?.waterProduction ?? 0) > 0 && <span>💧 +{selectedBuildingMeta!.waterProduction}</span>}
+              {(selectedBuildingMeta?.waterUse ?? 0) > 0 && <span>💧 −{selectedBuildingMeta!.waterUse}</span>}
+              {(selectedBuildingMeta?.techProduction ?? 0) > 0 && <span>Tech +{selectedBuildingMeta!.techProduction}</span>}
+              {(selectedBuildingMeta?.housingAdd ?? 0) > 0 && <span>Housing +{selectedBuildingMeta!.housingAdd}</span>}
+              {(selectedBuildingMeta?.safetyAdd ?? 0) > 0 && <span>Safety +{Math.round(selectedBuildingMeta!.safetyAdd * 100)}%</span>}
+            </div>
+          )}
+          {selectedBuildingInstance.damageState !== "HEALTHY" && selectedBuildingInstance.damageState !== "REPAIRING" && (
+            <button
+              className="inspector-primary"
+              onClick={() => void command({ type:"REPAIR_BUILDING", payload:{buildingId:selectedBuildingInstance.id} })}
+            >
+              Repair building
+            </button>
+          )}
+        </aside>
+      )}
 
       {selectedPropInstance && selectedPropMeta && mode === "SELECT" && (
         <div className="prop-inspector hud-panel" data-testid="prop-inspector">
