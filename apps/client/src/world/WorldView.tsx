@@ -335,7 +335,7 @@ export function WorldView({
     controls.minDistance = 22;
     controls.maxDistance = 120;
 
-    const environment = createEnvironmentVisuals(scene, renderer, worldRef.current.seed);
+    const environment = createEnvironmentVisuals(scene, renderer, String(worldRef.current.seed));
     const ambient = createAmbientVisuals(scene);
     const ground = environment.ground;
 
@@ -634,8 +634,8 @@ export function WorldView({
         (building) => building.constructionState === "BUILDING",
       );
 
-      const buildingIdentities = resolveBuildingVisualIdentities(current.seed, current.buildings);
-      host.dataset.visualDialect = resolveWorldVisualDialect(current.seed).id;
+      const buildingIdentities = resolveBuildingVisualIdentities(String(current.seed), current.buildings);
+      host.dataset.visualDialect = resolveWorldVisualDialect(String(current.seed)).id;
 
       current.buildings.forEach((building) => {
         const meta = buildCatalogRef.current.find((item) => item.id === building.definitionId);
@@ -747,7 +747,7 @@ export function WorldView({
         const adultJob = adultJobBuilding?.position ?? home;
         const work = child ? (school?.position ?? home) : adultJob;
         const role = citizenRoleForWorkplace(child, child ? "school" : adultJobBuilding?.definitionId);
-        const citizen = createCitizenVisual(current.seed, i, child, role, i < 18);
+        const citizen = createCitizenVisual(String(current.seed), i, child, role, i < 18);
         citizen.userData.index = i;
         citizen.userData.child = child;
         citizen.userData.role = role;
@@ -794,7 +794,7 @@ export function WorldView({
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
 
       if (homes.length > 0) {
-        const dog = createDogVisual(current.seed);
+        const dog = createDogVisual(String(current.seed));
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
