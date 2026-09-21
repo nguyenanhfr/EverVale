@@ -317,8 +317,10 @@ export function updateEnvironmentLighting(
   const bottomDay=new THREE.Color(0xd2dfbd);
   const top=topNight.clone().lerp(topDusk,twilight*0.72).lerp(topDay,daylight);
   const bottom=bottomNight.clone().lerp(bottomDusk,twilight*0.85).lerp(bottomDay,daylight);
-  rig.skyMaterial.uniforms.topColor.value.copy(top);
-  rig.skyMaterial.uniforms.bottomColor.value.copy(bottom);
+  const topUniform=rig.skyMaterial.uniforms["topColor"];
+  const bottomUniform=rig.skyMaterial.uniforms["bottomColor"];
+  if(topUniform) (topUniform.value as THREE.Color).copy(top);
+  if(bottomUniform) (bottomUniform.value as THREE.Color).copy(bottom);
   rig.renderer.toneMappingExposure=0.98+daylight*0.16+twilight*0.04;
   rig.fog.color.copy(sky);
   if (rig.scene.background instanceof THREE.Color) rig.scene.background.copy(sky);
