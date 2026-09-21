@@ -5,11 +5,12 @@ import { routeAlongRoads, samplePolyline } from "@evervale/domain/road-routing";
 import type { WorldState } from "@evervale/domain/world.types";
 import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protocol/world";
 import { createPropObject, makeSelectionRing } from "./prop-factory";
-import { createBuildingVisual } from "./building-visual";
+import { createBuildingVisualFromRegistry } from "./buildings/building-visual-registry";
 import { createRoadVisual } from "./road-visual";
 import { animateCitizenVisual, createCitizenVisual, createDogVisual } from "./actor-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
+import { resolveBuildingVisualIdentities, resolveWorldVisualDialect } from "./visual-identity";
 import {
   constructionVisualState,
   createBuilderObject,
@@ -603,6 +604,7 @@ export function WorldView({
         visualPopulationRef.current ?? current.society.population,
       );
       return [
+        current.seed,
         current.revision,
         selectedPropIdRef.current ?? "",
         population,
@@ -632,12 +634,19 @@ export function WorldView({
         (building) => building.constructionState === "BUILDING",
       );
 
+      const visualIdentities = resolveBuildingVisualIdentities(
+        current.seed,
+        current.buildings,
+      );
+      host.dataset.visualDialect = resolveWorldVisualDialect(current.seed).id;
+
       current.buildings.forEach((building) => {
         const meta = buildCatalogRef.current.find((item) => item.id === building.definitionId);
+        const identity = visualIdentities.get(building.id);
         const visual =
-          building.constructionState === "BUILDING"
+          building.constructionState === "BUILDING" || !identity
             ? createConstructionObject(building, meta)
-            : createBuildingVisual(building, meta);
+            : createBuildingVisualFromRegistry(building, meta, identity);
         visual.traverse((child) => {
           const mesh = child as THREE.Mesh;
           if (mesh.userData.buildingGlow) buildingGlowRef.current.push(mesh);
