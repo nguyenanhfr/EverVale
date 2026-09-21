@@ -8,6 +8,7 @@ import type {
   WorldRepository,
 } from "@evervale/application/ports";
 import { loadGameData } from "@evervale/balance-data";
+import type { WorkforceAllocator } from "@evervale/domain/advance-world";
 import type { SimulationDefinitions, WorldState } from "@evervale/domain/world.types";
 import { parseWorldCommand } from "@evervale/protocol/world-command-runtime";
 import type { WorldCommand } from "@evervale/protocol/world";
@@ -151,6 +152,7 @@ export function currentMoneyFlow(
 export interface SimHarnessOptions {
   seed?: number;
   buildingOverrides?: Record<string, Partial<SimulationDefinitions["buildings"][string]>>;
+  workforceAllocator?: WorkforceAllocator;
 }
 
 export class SimHarness {
@@ -184,6 +186,7 @@ export class SimHarness {
       definitions: this.definitions,
       ids: new DeterministicIds(this.seed),
       clock: this.clock,
+      ...(options.workforceAllocator ? { workforceAllocator: options.workforceAllocator } : {}),
     });
 
     this.placementCandidates = this.makePlacementCandidates();
