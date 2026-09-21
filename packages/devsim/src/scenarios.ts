@@ -335,6 +335,7 @@ export interface ScenarioRunOptions {
   seed?: number;
   stepSeconds?: number;
   buildingOverrides?: Record<string, Partial<BuildingDefinition>>;
+  buildPlan?: string[];
   policyTransitions?: ScenarioPolicyTransition[];
   resourceTransitions?: ScenarioResourceTransition[];
   includeSeries?: boolean;
@@ -434,6 +435,7 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
   if (!Number.isFinite(options.hours) || options.hours <= 0) throw new Error("INVALID_HOURS");
   if (!Number.isFinite(stepSeconds) || stepSeconds <= 0) throw new Error("INVALID_STEP_SECONDS");
 
+  const buildPlan = options.buildPlan ?? definition.buildPlan;
   const mergedOverrides: Record<string, Partial<BuildingDefinition>> = {
     ...(definition.policyOverrides ?? {}),
     ...(options.buildingOverrides ?? {}),
@@ -527,8 +529,8 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
       (building) => building.constructionState === "BUILDING",
     );
 
-    if (!hasConstruction && planIndex < definition.buildPlan.length && elapsed >= nextDecisionAt) {
-      const buildingId = definition.buildPlan[planIndex]!;
+    if (!hasConstruction && planIndex < buildPlan.length && elapsed >= nextDecisionAt) {
+      const buildingId = buildPlan[planIndex]!;
       const action = await harness.placeBuilding(buildingId);
       if (action.accepted) {
         planIndex += 1;
@@ -726,9 +728,9 @@ export async function runScenario(options: ScenarioRunOptions): Promise<Scenario
       schoolZeroStaffSeconds,
     },
     plan: {
-      requested: definition.buildPlan,
+      requested: buildPlan,
       acceptedCount: planIndex,
-      nextBuilding: definition.buildPlan[planIndex] ?? null,
+      nextBuilding: buildPlan[planIndex] ?? null,
     },
     strategicPolicy: {
       model: definition.policyModel ?? "RUNTIME_DEFAULT",
