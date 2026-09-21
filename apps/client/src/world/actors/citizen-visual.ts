@@ -306,7 +306,7 @@ export function createCitizenVisual(
 }
 
 export function animateCitizenVisual(
-  citizen: THREE.Mesh,
+  citizen: THREE.Object3D,
   time: number,
   moving: boolean,
   index: number,
@@ -324,4 +324,12 @@ export function animateCitizenVisual(
     : Math.sin(phase) * 0.012;
   citizen.position.y = bob;
   citizen.rotation.z = moving ? Math.sin(phase) * (role === "school_child" ? 0.034 : 0.024) : 0;
+
+  const previous = Number(citizen.userData.visualLastTick ?? time);
+  const dt = Math.max(0, Math.min(0.1, (time - previous) / 1000));
+  citizen.userData.visualLastTick = time;
+  const tick = citizen.userData.tick;
+  if (typeof tick === "function") {
+    tick(dt, time / 1000);
+  }
 }
