@@ -45,7 +45,6 @@ interface Props {
   movingPropId: string | null;
   roadStart: { x: number; z: number } | null;
   visualPopulationOverride: number | null;
-  peopleStreetPreview: boolean;
   onGroundClick(position: { x: number; z: number }): void;
   onPropSelect(propId: string | null): void;
   onRouting?(routedCitizens: number, disconnectedRoutes: number): void;
@@ -231,8 +230,6 @@ function routePoint(
 function schedulePosition(
   current: WorldState,
   mesh: THREE.Object3D,
-  streetPreview: boolean,
-  previewElapsedSeconds: number,
 ): { x: number; z: number; activity: string } {
   const home = mesh.userData.home as {x:number;z:number};
   const work = mesh.userData.work as {x:number;z:number};
@@ -246,39 +243,6 @@ function schedulePosition(
   const laneOffset = Number(mesh.userData.laneOffset ?? 0);
   const routePhaseOffset = Number(mesh.userData.routePhaseOffset ?? 0);
   const hour = presentationMinuteOfDay(current.simulationSeconds) / 60;
-
-  if (streetPreview) {
-    const routeCandidates = [
-      homeToWork,
-      workToLeisure,
-      leisureToHome,
-    ].filter((route): route is VisualRoute => Boolean(route?.connected));
-
-    const route = routeCandidates[presentationSlot % Math.max(1, routeCandidates.length)];
-    if (route?.connected) {
-      const cycle =
-        (previewElapsedSeconds / (13 + (presentationSlot % 5) * 1.7) +
-          presentationSlot * 0.137) %
-        1;
-      const thereAndBack = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2;
-      const fallback =
-        presentationSlot % 3 === 0
-          ? home
-          : presentationSlot % 3 === 1
-            ? work
-            : leisure;
-      return {
-        ...routePoint(
-          route,
-          thereAndBack,
-          fallback,
-          laneOffset,
-          routePhaseOffset,
-        ),
-        activity: "STREET_PREVIEW",
-      };
-    }
-  }
 
   if (current.combat && current.combat.status !== "RESOLVED") {
     return {
@@ -365,7 +329,6 @@ export function WorldView({
   movingPropId,
   roadStart,
   visualPopulationOverride,
-  peopleStreetPreview,
   onGroundClick,
   onPropSelect,
   onRouting,
@@ -387,7 +350,6 @@ export function WorldView({
   const routingRef = useRef(onRouting);
   const roadStartRef = useRef(roadStart);
   const visualPopulationRef = useRef(visualPopulationOverride);
-  const peopleStreetPreviewRef = useRef(peopleStreetPreview);
   const citizensRef = useRef<THREE.Object3D[]>([]);
   const animalsRef = useRef<THREE.Object3D[]>([]);
   const propWaterRef = useRef<THREE.Mesh[]>([]);
@@ -415,12 +377,6 @@ export function WorldView({
   useEffect(() => { routingRef.current = onRouting; }, [onRouting]);
   useEffect(() => { roadStartRef.current = roadStart; }, [roadStart]);
   useEffect(() => { visualPopulationRef.current = visualPopulationOverride; }, [visualPopulationOverride]);
-  useEffect(() => {
-    peopleStreetPreviewRef.current = peopleStreetPreview;
-    if (hostRef.current) {
-      hostRef.current.dataset.peopleStreetPreview = String(peopleStreetPreview);
-    }
-  }, [peopleStreetPreview]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -453,7 +409,6 @@ export function WorldView({
     controls.maxDistance = 220;
 
     host.dataset.cameraMode = "free-preview";
-    host.dataset.peopleStreetPreview = String(peopleStreetPreviewRef.current);
     host.dataset.cameraMinDistance = String(controls.minDistance);
     host.dataset.cameraMaxDistance = String(controls.maxDistance);
 
@@ -728,7 +683,6 @@ export function WorldView({
       return [
         current.seed,
         current.revision,
-        peopleStreetPreviewRef.current ? "street-preview" : "schedule",
         selectedPropIdRef.current ?? "",
         population,
         buildingState,
@@ -997,12 +951,7 @@ export function WorldView({
       }
 
       citizensRef.current.forEach((mesh) => {
-        const scheduled = schedulePosition(
-          current,
-          mesh,
-          peopleStreetPreviewRef.current,
-          time / 1000,
-        );
+        const scheduled = schedulePosition(current, mesh);
         const i = Number(mesh.userData.index);
         const offsetX = Number(mesh.userData.offsetX ?? 0);
         const offsetZ = Number(mesh.userData.offsetZ ?? 0);
@@ -1073,9 +1022,8 @@ export function WorldView({
         water.rotation.y = Math.sin(time / 1500 + i) * 0.04;
       });
 
-      const day = peopleStreetPreviewRef.current
-        ? 10.5 / 24
-        : presentationMinuteOfDay(current.simulationSeconds) / (24 * 60);
+      const day =
+        presentationMinuteOfDay(current.simulationSeconds) / (24 * 60);
       const nightFactor = updateEnvironmentLighting(environment, day);
       updateAmbientVisuals(ambient, time, nightFactor);
       propGlowRef.current.forEach((glow) => {
