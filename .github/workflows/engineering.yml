@@ -53,6 +53,14 @@ jobs:
           path: test-results
           if-no-files-found: ignore
 
+      - name: Upload M1 visual canon
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-visual-canon
+          path: test-results/**/visual-canon.png
+          if-no-files-found: ignore
+
 
   postgres-persistence:
     runs-on: ubuntu-latest
