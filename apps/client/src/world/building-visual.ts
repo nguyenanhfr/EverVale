@@ -199,54 +199,6 @@ function addChimney(group:THREE.Group,x:number,z:number,y:number): void {
   box(group,0.62,0.14,0.62,material("stoneDark"),x,y+0.98,z,false);
 }
 
-function addSchool(group:THREE.Group,width:number,depth:number): void {
-  const h=3.2;
-  addFoundation(group,width,depth);
-  box(group,width*0.9,h,depth*0.82,material("plasterWarm"),0,h/2+0.34,0);
-  addGabledRoof(group,width*0.96,depth*0.88,h+0.34,material("roofWarm"),1.0);
-  addDoor(group,0,depth*0.41+0.08,1.05,1.75);
-  addStoneStep(group,0,depth*0.46+0.3,1.45);
-  addEaveBrackets(group,width*0.9,depth*0.82,h+0.13);
-  for(const x of [-width*0.3,-width*0.1,width*0.1,width*0.3]) addWindow(group,x,1.65,depth*0.41+0.09);
-  box(group,0.72,1.0,0.72,material("stone"),0,h+0.72,0);
-  const bell=mesh(new THREE.ConeGeometry(0.24,0.35,10),material("copper",0.45,0.3),0,h+0.9,depth*0.38,false);
-  bell.rotation.x=Math.PI;
-  group.add(bell);
-}
-
-function addPark(group:THREE.Group,width:number,depth:number): void {
-  box(group,width*0.96,0.12,depth*0.96,material("grass"),0,0.06,0,false);
-  box(group,width*0.16,0.05,depth*0.9,material("stone"),0,0.15,0,false);
-  const basin=mesh(new THREE.CylinderGeometry(0.85,0.95,0.22,14),material("stone"),0,0.2,0,false);
-  const water=mesh(new THREE.CylinderGeometry(0.72,0.72,0.04,16),material("water",0.3),0,0.34,0,false);
-  water.userData.propWater=true;
-  group.add(basin,water);
-  for(const [x,z,s] of [
-    [-width*0.3,-depth*0.28,0.9],
-    [width*0.3,-depth*0.24,0.82],
-    [-width*0.3,depth*0.28,0.78],
-    [width*0.3,depth*0.3,0.92],
-  ] as const) {
-    const trunk=mesh(new THREE.CylinderGeometry(0.14*s,0.2*s,1.65*s,6),material("timber"),x,0.86*s,z);
-    const crown=mesh(new THREE.DodecahedronGeometry(0.72*s,0),material("grass"),x,2.05*s,z);
-    group.add(trunk,crown);
-  }
-}
-
-function addGuardPost(group:THREE.Group,width:number,depth:number): void {
-  const h=2.85;
-  addFoundation(group,width,depth);
-  box(group,width*0.86,1.0,depth*0.82,material("stoneDark"),0,0.84,0);
-  box(group,width*0.78,h-0.7,depth*0.74,material("timber"),0,1.85,0);
-  addGabledRoof(group,width*0.94,depth*0.86,h+0.34,material("roof"),0.95);
-  addDoor(group,0,depth*0.37+0.08);
-  addWindow(group,-width*0.24,1.78,depth*0.37+0.09);
-  addWindow(group,width*0.24,1.78,depth*0.37+0.09);
-  const pole=mesh(new THREE.CylinderGeometry(0.035,0.04,2.3,6),material("metal"),width*0.46,1.35,0,false);
-  const flag=box(group,0.7,0.42,0.04,material("awning"),width*0.46+0.36,2.1,0,false);
-  group.add(pole,flag);
-}
-
 function addFarm(group:THREE.Group,width:number,depth:number): void {
   const h=3.15;
   addFoundation(group,width,depth);
@@ -399,9 +351,6 @@ export function createBuildingVisual(
 
   if (!renderAuthoredBuildingFamily(building.definitionId, group, width, depth, identity)) {
     switch(building.definitionId) {
-      case "school": addSchool(group,width,depth); break;
-      case "park": addPark(group,width,depth); break;
-      case "guard_post": addGuardPost(group,width,depth); break;
       case "farm": addFarm(group,width,depth); break;
       case "restaurant": addRestaurant(group,width,depth); break;
       case "builders_yard": addBuildersYard(group,width,depth); break;
