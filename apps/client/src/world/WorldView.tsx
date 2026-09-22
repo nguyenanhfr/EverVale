@@ -761,8 +761,18 @@ export function WorldView({
       const jobs = current.buildings.filter(
         (b) =>
           ["workshop", "power_plant", "water_plant", "school", "guard_post"].includes(b.definitionId) &&
-          b.constructionState === "COMPLETE",
+          b.constructionState === "COMPLETE" &&
+          b.damageState !== "DISABLED" &&
+          b.workersAssigned > 0,
       );
+      const staffedJobSlots = jobs
+        .flatMap((building) =>
+          Array.from(
+            { length: Math.max(0, Math.floor(building.workersAssigned)) },
+            () => building,
+          ),
+        )
+        .slice(0, Math.max(0, current.society.assignedWorkers));
       const school = current.buildings.find(
         (b) => b.definitionId === "school" && b.constructionState === "COMPLETE",
       );
@@ -785,14 +795,14 @@ export function WorldView({
         40,
         visualPopulationRef.current ?? current.society.population,
       );
+      let workerSlot = 0;
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const jobBuilding = jobs[i % Math.max(1, jobs.length)];
+        const jobBuilding = child ? undefined : staffedJobSlots[workerSlot];
+        if (!child && jobBuilding) workerSlot += 1;
         const role: CitizenVisualRole = child
           ? "school_child"
-          : i >= current.society.workforce
-            ? "resident"
-            : citizenRoleForJob(jobBuilding?.definitionId);
+          : citizenRoleForJob(jobBuilding?.definitionId);
         const citizen = createCitizenVisual(i, role, i < 18, current.seed);
         citizen.userData.index = i;
         citizen.userData.child = child;
@@ -801,9 +811,7 @@ export function WorldView({
         const adultJob = jobBuilding?.position ?? home;
         const work = child
           ? (school?.position ?? home)
-          : role === "resident"
-            ? home
-            : adultJob;
+          : adultJob;
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
