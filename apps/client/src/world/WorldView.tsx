@@ -247,6 +247,14 @@ function schedulePosition(
     };
   }
 
+  const dailyRoutesConnected =
+    homeToWork?.connected === true &&
+    workToLeisure?.connected === true &&
+    leisureToHome?.connected === true;
+  if (!dailyRoutesConnected) {
+    return { ...home, activity: "ROUTE_BLOCKED" };
+  }
+
   const commute = (
     startHour: number,
     endHour: number,
