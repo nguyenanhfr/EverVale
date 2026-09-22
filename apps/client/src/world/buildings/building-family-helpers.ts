@@ -12,6 +12,8 @@ const palette = {
   roofWarm: 0x8a5e49,
   copper: 0x9d7447,
   metal: 0x4f5958,
+  water: 0x72a9ad,
+  grass: 0x789a6a,
   soil: 0x806447,
   awning: 0xb86f59,
   cream: 0xf0e4c8,
