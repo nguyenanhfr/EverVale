@@ -140,7 +140,7 @@ export function applyWeatherHazards(
   input: WorldState,
   episodes: readonly WeatherEpisodeStart[],
   definitions: SimulationDefinitions,
-  deltaSeconds: number,
+  realDeltaSeconds: number,
 ): WorldState {
   const weatherDefinitions = definitions.weather;
   const incidents = definitions.incidents;
@@ -152,8 +152,11 @@ export function applyWeatherHazards(
   );
   if (perDayCap <= 0) return input;
 
-  const simulatedDays = Math.max(1, Math.ceil(Math.max(0, deltaSeconds) / 86400));
-  const incidentCap = perDayCap * simulatedDays;
+  const elapsedDays = Math.max(
+    1,
+    Math.ceil(Math.max(0, realDeltaSeconds) / 86400),
+  );
+  const incidentCap = perDayCap * elapsedDays;
 
   let world = input;
   let applied = 0;
