@@ -438,8 +438,8 @@ export function createBuildingVisual(
   const depth=meta ? meta.footprintCellsZ*meta.gridCellMeters : building.definitionId==="town_center" ? 8 : 4;
 
   switch(building.definitionId) {
-    case "town_center": addTownCenter(group,width,depth); break;
-    case "house_small": addHouse(group,width,depth); break;
+    case "town_center": addTownCenterVisual(group,width,depth,identity); break;
+    case "house_small": addHouseSmallVisual(group,width,depth,identity); break;
     case "workshop": addWorkshop(group,width,depth); break;
     case "power_plant": addPowerPlant(group,width,depth); break;
     case "water_plant": addWaterPlant(group,width,depth); break;
@@ -463,5 +463,7 @@ export function createBuildingVisual(
   group.rotation.y=building.rotationY;
   group.userData.buildingId=building.id;
   group.userData.buildingDefinitionId=building.definitionId;
+  group.userData.visualVariant=identity?.variant ?? "legacy";
+  group.userData.visualDialect=identity?.dialect ?? "legacy";
   return group;
 }
