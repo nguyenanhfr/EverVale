@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SimulationDefinitions, WorldState } from "@evervale/domain/world.types";
+import type { SimulationDefinitions, WeatherDefinitions, WorldState } from "@evervale/domain/world.types";
 import { WorldService } from "./world-service.js";
 import type {
   AcceptedCommandContext,
@@ -90,6 +90,27 @@ const defs: SimulationDefinitions = {
   enemies: {},
   blockers: {},
   props: {},
+};
+
+const weatherDefinitions: WeatherDefinitions = {
+  seasonDurationSeconds: 604800,
+  normalEpisodeMinSeconds: 1,
+  normalEpisodeMaxSeconds: 1,
+  severeEpisodeMinSeconds: 1,
+  severeEpisodeMaxSeconds: 1,
+  severeCooldownSeconds: 28800,
+  seasonWeights: {
+    SPRING: { CLEAR: 1, LIGHT_RAIN: 1 },
+    SUMMER: { CLEAR: 1 },
+    AUTUMN: { RAIN: 1 },
+    WINTER: { SNOW: 1 },
+  },
+  modifiers: {},
+};
+
+const defsWithWeather: SimulationDefinitions = {
+  ...defs,
+  weather: weatherDefinitions,
 };
 
 const building = (id: string, definitionId: string): WorldState["buildings"][number] => ({
@@ -721,4 +742,40 @@ test("read checkpoint CAS race reloads the committed winner instead of overwriti
   assert.equal(repo.saveCalls, 1);
   assert.equal(result.revision, 7);
   assert.equal(result.speed, 2);
+});
+
+
+test("legacy world without weather is normalized and weather transition checkpoints", async () => {
+  const base = new Date("2026-09-21T12:00:00.000Z");
+  const world: WorldState = {
+    worldId:"world-weather-migration",
+    ownerId:"owner-weather-migration",
+    seed:77,
+    revision:2,
+    lifecycle:"ACTIVE",
+    speed:1,
+    simulationSeconds:0,
+    lastSimulatedAt:base.toISOString(),
+    resources:{money:1200,moneyCap:5000,power:60,powerCap:120,water:60,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:0,safety:0.5,beauty:0},
+    buildings:[building("tc-weather","town_center")],
+    roads:[], blockers:[], props:[], combat:null, events:[],
+  };
+  const repo = new Repo(world);
+  const clock = new FakeClock(new Date(base.getTime() + 2500));
+  const service = new WorldService({
+    repository:repo,
+    definitions:defsWithWeather,
+    ids:new Ids(),
+    clock,
+  });
+
+  const result = await service.getOrCreate("owner-weather-migration");
+
+  assert.ok(result.weather);
+  assert.ok((result.weather?.episodeIndex ?? 0) >= 2);
+  assert.equal(result.revision, 3);
+  assert.equal(repo.saveCalls, 1);
+  assert.ok(repo.world.weather);
+  assert.equal(repo.world.weather?.episodeIndex, result.weather?.episodeIndex);
 });
