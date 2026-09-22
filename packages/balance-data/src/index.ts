@@ -7,7 +7,11 @@ import type {
   BlockerDefinition,
   CombatActorDefinition,
   PropDefinition,
+  Season,
   SimulationDefinitions,
+  WeatherDefinitions,
+  WeatherKind,
+  WeatherModifierDefinition,
 } from "@evervale/domain/world.types";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -40,6 +44,31 @@ type RawFootprints = {
   footprints: Record<string, { cells_x: number; cells_z: number }>;
 };
 
+
+type RawWeather = {
+  calendar: {
+    season_duration_real_seconds_at_1x: number;
+    season_order: Season[];
+  };
+  episode_duration_minutes: {
+    normal_min: number;
+    normal_max: number;
+    severe_min: number;
+    severe_max: number;
+  };
+  severe: {
+    cooldown_real_hours_min: number;
+  };
+  season_weights: Record<Season, Partial<Record<WeatherKind, number>>>;
+  modifiers: Partial<Record<WeatherKind, {
+    citizen_power_mult?: number;
+    citizen_water_mult?: number;
+    travel_cost_mult?: number;
+    outdoor_activity_mult?: number;
+    civilian_traffic_mult?: number;
+  }>>;
+};
+
 type RawProps = {
   default_snap_meters: number;
   props: Record<string, {
@@ -56,6 +85,62 @@ type RawProps = {
 
 const numberValue = (value: unknown, fallback = 0): number =>
   typeof value === "number" ? value : fallback;
+
+
+function mapWeather(raw: RawWeather): WeatherDefinitions {
+  const neutral: WeatherModifierDefinition = {
+    citizenPowerMult: 1,
+    citizenWaterMult: 1,
+    travelCostMult: 1,
+    outdoorActivityMult: 1,
+    civilianTrafficMult: 1,
+  };
+
+  return {
+    seasonDurationSeconds: Math.max(
+      1,
+      numberValue(raw.calendar.season_duration_real_seconds_at_1x, 604800),
+    ),
+    normalEpisodeMinSeconds:
+      Math.max(1, numberValue(raw.episode_duration_minutes.normal_min, 20)) * 60,
+    normalEpisodeMaxSeconds:
+      Math.max(1, numberValue(raw.episode_duration_minutes.normal_max, 120)) * 60,
+    severeEpisodeMinSeconds:
+      Math.max(1, numberValue(raw.episode_duration_minutes.severe_min, 15)) * 60,
+    severeEpisodeMaxSeconds:
+      Math.max(1, numberValue(raw.episode_duration_minutes.severe_max, 60)) * 60,
+    severeCooldownSeconds:
+      Math.max(0, numberValue(raw.severe.cooldown_real_hours_min, 8)) * 60 * 60,
+    seasonWeights: raw.season_weights,
+    modifiers: Object.fromEntries(
+      Object.entries(raw.modifiers).map(([kind, modifier]) => [
+        kind,
+        {
+          citizenPowerMult: numberValue(
+            modifier?.citizen_power_mult,
+            neutral.citizenPowerMult,
+          ),
+          citizenWaterMult: numberValue(
+            modifier?.citizen_water_mult,
+            neutral.citizenWaterMult,
+          ),
+          travelCostMult: numberValue(
+            modifier?.travel_cost_mult,
+            neutral.travelCostMult,
+          ),
+          outdoorActivityMult: numberValue(
+            modifier?.outdoor_activity_mult,
+            neutral.outdoorActivityMult,
+          ),
+          civilianTrafficMult: numberValue(
+            modifier?.civilian_traffic_mult,
+            neutral.civilianTrafficMult,
+          ),
+        },
+      ]),
+    ) as Partial<Record<WeatherKind, WeatherModifierDefinition>>,
+  };
+}
 
 function mapBuilding(
   id: string,
@@ -223,6 +308,7 @@ export function loadGameData(): LoadedGameData {
   const blockers = readYaml<RawBlockers>("data/world/v0.1/blockers.yaml").blockers;
   const footprintData = readYaml<RawFootprints>("data/content/v0.2/build_footprints.yaml");
   const propData = readYaml<RawProps>("data/content/v0.2/props.yaml");
+  const weatherData = readYaml<RawWeather>("data/weather/v0.1/weather.yaml");
 
   const buildings = Object.fromEntries(
     Object.entries(balance.buildings).map(([id, raw]) => {
@@ -251,6 +337,7 @@ export function loadGameData(): LoadedGameData {
       ]),
     ),
     gridCellMeters: footprintData.grid_cell_meters,
+    weather: mapWeather(weatherData),
   };
 
   const m1Ids = new Set([
