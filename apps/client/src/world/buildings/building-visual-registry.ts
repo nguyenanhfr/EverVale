@@ -12,6 +12,7 @@ type AuthoredFamilyRenderer = (
   identity?: BuildingVisualIdentity,
 ) => void;
 
+// Presentation-only dispatch. Gameplay definitions and footprints remain authoritative elsewhere.
 const authoredFamilyRenderers: Readonly<Record<string, AuthoredFamilyRenderer>> = {
   town_center: addTownCenterVisual,
   house_small: addHouseSmallVisual,
