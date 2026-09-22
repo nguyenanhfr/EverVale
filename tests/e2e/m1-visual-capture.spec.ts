@@ -21,6 +21,7 @@ test("M1 visual canon: deterministic 40x40 presentation capture", async ({ page 
   await expect.poll(async () => Number(await worldView.getAttribute("data-frame-count"))).toBeGreaterThan(5);
   await expect.poll(async () => Number(await worldView.getAttribute("data-disconnected-routes"))).toBe(0);
   await expect.poll(async () => await worldView.getAttribute("data-visual-dialect")).not.toBeNull();
+  await expect.poll(async () => await worldView.getAttribute("data-visual-scatter")).not.toBeNull();
 
   // Freeze authoritative world time before capture so lighting and actor targets are stable.
   const pause = page.getByRole("button", { name: "Ⅱ", exact: true });
@@ -42,6 +43,7 @@ test("M1 visual canon: deterministic 40x40 presentation capture", async ({ page 
 
   console.log("M1_VISUAL_CANON", {
     dialect: await worldView.getAttribute("data-visual-dialect"),
+    scatter: await worldView.getAttribute("data-visual-scatter"),
     drawCalls: Number(await worldView.getAttribute("data-draw-calls")),
     triangles: Number(await worldView.getAttribute("data-triangles")),
     citizens: Number(await worldView.getAttribute("data-citizens")),
