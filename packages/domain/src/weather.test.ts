@@ -17,6 +17,7 @@ const definitions: WeatherDefinitions = {
   severeEpisodeMinSeconds: 5,
   severeEpisodeMaxSeconds: 5,
   severeCooldownSeconds: 30,
+  maxOfflineWeatherHazardsPer24h: 2,
   seasonWeights: {
     SPRING: { CLEAR: 1, LIGHT_RAIN: 1 },
     SUMMER: { CLEAR: 1, HEATWAVE: 1 },
@@ -32,6 +33,7 @@ const definitions: WeatherDefinitions = {
       civilianTrafficMult: 0.9,
     },
   },
+  hazardChancePerEpisode: {},
 };
 
 test("weather replay is deterministic across chunked catch-up", () => {
