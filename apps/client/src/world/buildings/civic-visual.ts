@@ -286,8 +286,9 @@ function addFountainGrove(group: THREE.Group, width: number, depth: number): voi
 
 function addDuckPond(group: THREE.Group, width: number, depth: number): void {
   addParkBase(group, width, depth);
+  const pondRadius = Math.min(width, depth) * 0.25;
   const bank = familyMesh(
-    new THREE.CylinderGeometry(width * 0.3, width * 0.34, 0.13, 16),
+    new THREE.CylinderGeometry(pondRadius * 1.18, pondRadius * 1.34, 0.13, 16),
     familyMaterial("soil"),
     -width * 0.08,
     0.1,
@@ -295,7 +296,7 @@ function addDuckPond(group: THREE.Group, width: number, depth: number): void {
     false,
   );
   const pond = familyMesh(
-    new THREE.CylinderGeometry(width * 0.25, width * 0.25, 0.035, 18),
+    new THREE.CylinderGeometry(pondRadius, pondRadius, 0.035, 18),
     familyMaterial("water", 0.28),
     -width * 0.08,
     0.18,
