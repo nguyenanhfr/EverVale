@@ -133,6 +133,7 @@ function pointSegmentDistance(
 
 function approximateBuildingPlacementValid(
   world: WorldState,
+  blockerCatalog: BlockerCatalogEntryDto[],
   selected: BuildCatalogEntryDto,
   x: number,
   z: number,
@@ -147,9 +148,11 @@ function approximateBuildingPlacementValid(
   if (collision) return false;
 
   const blocked = world.blockers.some((b) => {
+    const radius =
+      blockerCatalog.find((item) => item.id === b.definitionId)?.radius ?? 0;
     const dx = Math.max(0, Math.abs(b.position.x - x) - width / 2);
     const dz = Math.max(0, Math.abs(b.position.z - z) - depth / 2);
-    return Math.hypot(dx, dz) < 3.5;
+    return Math.hypot(dx, dz) < radius;
   });
   if (blocked) return false;
 
@@ -161,6 +164,7 @@ function approximateBuildingPlacementValid(
 function approximatePropPlacementValid(
   world: WorldState,
   catalog: PropCatalogEntryDto[],
+  blockerCatalog: BlockerCatalogEntryDto[],
   selected: PropCatalogEntryDto,
   x: number,
   z: number,
@@ -194,9 +198,11 @@ function approximatePropPlacementValid(
   if (propCollision) return false;
 
   return !world.blockers.some((blocker) => {
+    const radius =
+      blockerCatalog.find((item) => item.id === blocker.definitionId)?.radius ?? 0;
     const dx = Math.max(0, Math.abs(blocker.position.x - x) - width / 2);
     const dz = Math.max(0, Math.abs(blocker.position.z - z) - depth / 2);
-    return Math.hypot(dx, dz) < 3.5;
+    return Math.hypot(dx, dz) < radius;
   });
 }
 
@@ -533,7 +539,13 @@ export function WorldView({
         const z = Math.round(hit.z / grid) * grid;
         const width = selected.footprintCellsX * grid;
         const depth = selected.footprintCellsZ * grid;
-        const valid = approximateBuildingPlacementValid(worldRef.current, selected, x, z);
+        const valid = approximateBuildingPlacementValid(
+          worldRef.current,
+          blockerCatalogRef.current,
+          selected,
+          x,
+          z,
+        );
         buildGhost.visible = true;
         buildGhost.scale.set(width, 0.32, depth);
         buildGhost.position.set(x, 0.18, z);
@@ -571,6 +583,7 @@ export function WorldView({
         const valid = approximatePropPlacementValid(
           worldRef.current,
           propCatalogRef.current,
+          blockerCatalogRef.current,
           selected,
           x,
           z,
