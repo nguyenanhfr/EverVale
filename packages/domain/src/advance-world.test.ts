@@ -132,3 +132,74 @@ test("authoritative heatwave increases resident Water demand", () => {
   assert.ok(heat.resources.water < clear.resources.water);
   assert.ok(heat.society.happiness <= clear.society.happiness);
 });
+
+
+test("weather episode transition applies authoritative incident through advanceWorld", () => {
+  const hazardWeather: WeatherDefinitions = {
+    seasonDurationSeconds: 604800,
+    normalEpisodeMinSeconds: 100,
+    normalEpisodeMaxSeconds: 100,
+    severeEpisodeMinSeconds: 100,
+    severeEpisodeMaxSeconds: 100,
+    severeCooldownSeconds: 28800,
+    maxOfflineWeatherHazardsPer24h: 2,
+    seasonWeights: {
+      SPRING: { RAIN: 1 },
+      SUMMER: { RAIN: 1 },
+      AUTUMN: { RAIN: 1 },
+      WINTER: { RAIN: 1 },
+    },
+    modifiers: {
+      RAIN: {
+        citizenPowerMult: 1,
+        citizenWaterMult: 1,
+        travelCostMult: 1.07,
+        outdoorActivityMult: 0.5,
+        civilianTrafficMult: 0.82,
+        hazardTags: ["storm_damage"],
+      },
+    },
+    hazardChancePerEpisode: { storm_damage: 1 },
+  };
+  const hazardDefs: SimulationDefinitions = {
+    ...defs,
+    weather: hazardWeather,
+    incidents: {
+      storm_damage: {
+        id: "storm_damage",
+        severity: "medium",
+        eligible: ["house_small"],
+        pathBlock: false,
+        conditionDamageMin: 5,
+        conditionDamageMax: 5,
+      },
+    },
+  };
+  const world: WorldState = {
+    worldId:"hazard-world", ownerId:"hazard-owner", seed:99, revision:0, lifecycle:"ACTIVE", speed:1,
+    simulationSeconds:0, lastSimulatedAt:"2026-09-22T10:00:00.000Z",
+    resources:{money:1200,moneyCap:5000,power:50,powerCap:60,water:50,waterCap:60,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:0,safety:0.5,beauty:0},
+    buildings:[building("house-hazard","house_small")],
+    roads:[], blockers:[], props:[],
+    weather:{
+      season:"SPRING",
+      seasonProgress:0,
+      climateSeed:99,
+      current:"CLEAR",
+      episodeIndex:0,
+      episodeSeed:1,
+      episodeRemainingSeconds:1,
+      severeCooldownRemainingSeconds:0,
+    },
+    combat:null,
+    events:[],
+  };
+
+  const result = advanceWorld(world, hazardDefs, 2);
+
+  assert.equal(result.weather?.current, "RAIN");
+  assert.equal(result.buildings[0]?.condition, 95);
+  assert.equal(result.buildings[0]?.damageState, "DAMAGED");
+  assert.equal(result.events[0]?.type, "WEATHER_STORM_DAMAGE");
+});
