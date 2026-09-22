@@ -96,6 +96,7 @@ export function familyBox(
 }
 
 export function addFamilyFoundation(group: THREE.Group, width: number, depth: number): void {
+  familyBox(group, width * 1.03, 0.05, depth * 1.03, familyMaterial("stoneDark"), 0, 0.025, 0, false);
   familyBox(group, width * 0.96, 0.28, depth * 0.96, familyMaterial("stoneDark"), 0, 0.14, 0);
   familyBox(group, width * 0.9, 0.12, depth * 0.9, familyMaterial("stone"), 0, 0.34, 0, false);
 }
@@ -189,6 +190,7 @@ export function addFamilyStoneStep(
   z: number,
   width = 1.25,
 ): void {
+  familyBox(group, width * 0.96, 0.045, 0.82, familyMaterial("stone"), x, 0.035, z + 0.35, false);
   familyBox(group, width, 0.16, 0.5, familyMaterial("stone"), x, 0.12, z, false);
   familyBox(group, width * 0.78, 0.12, 0.34, familyMaterial("stoneDark"), x, 0.26, z - 0.12, false);
 }
