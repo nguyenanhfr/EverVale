@@ -2,6 +2,8 @@ import * as THREE from "three";
 import type { BuildingVisualIdentity } from "../visual-identity";
 import { addHouseSmallVisual } from "./house-small-visual";
 import { addTownCenterVisual } from "./town-center-visual";
+import { addWorkshopVisual } from "./workshop-visual";
+import { addPowerPlantVisual, addWaterPlantVisual } from "./utility-visual";
 
 type AuthoredFamilyRenderer = (
   group: THREE.Group,
@@ -13,6 +15,9 @@ type AuthoredFamilyRenderer = (
 const authoredFamilyRenderers: Readonly<Record<string, AuthoredFamilyRenderer>> = {
   town_center: addTownCenterVisual,
   house_small: addHouseSmallVisual,
+  workshop: addWorkshopVisual,
+  power_plant: addPowerPlantVisual,
+  water_plant: addWaterPlantVisual,
 };
 
 export function renderAuthoredBuildingFamily(
