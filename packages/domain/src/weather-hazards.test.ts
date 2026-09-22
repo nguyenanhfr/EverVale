@@ -240,7 +240,7 @@ test("weather damage never deletes a building or drops condition below recovery 
   const hardHit: SimulationDefinitions = {
     ...definitions,
     incidents: {
-      ...definitions.incidents,
+      ...(definitions.incidents ?? {}),
       lightning_fire: {
         id: "lightning_fire",
         severity: "medium",
