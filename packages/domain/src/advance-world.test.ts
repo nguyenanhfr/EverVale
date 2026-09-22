@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { advanceWorld } from "./advance-world.js";
-import type { SimulationDefinitions, WorldState } from "./world.types.js";
+import type { SimulationDefinitions, WeatherDefinitions, WorldState } from "./world.types.js";
 
 const zero = {
   moneyCost: 0, varumCost: 0, buildCycles: 0, workers: 0, priority: 0,
@@ -55,4 +55,78 @@ test("starter economy advances without negative resources", () => {
   assert.ok(next.resources.power >= 0);
   assert.ok(next.resources.water >= 0);
   assert.ok(next.society.assignedWorkers <= next.society.workforce);
+});
+
+
+const weatherDefinitions: WeatherDefinitions = {
+  seasonDurationSeconds: 604800,
+  normalEpisodeMinSeconds: 3600,
+  normalEpisodeMaxSeconds: 3600,
+  severeEpisodeMinSeconds: 1800,
+  severeEpisodeMaxSeconds: 1800,
+  severeCooldownSeconds: 28800,
+  seasonWeights: {
+    SPRING: { CLEAR: 1 },
+    SUMMER: { CLEAR: 1 },
+    AUTUMN: { CLEAR: 1 },
+    WINTER: { CLEAR: 1 },
+  },
+  modifiers: {
+    CLEAR: {
+      citizenPowerMult: 1,
+      citizenWaterMult: 1,
+      travelCostMult: 1,
+      outdoorActivityMult: 1,
+      civilianTrafficMult: 1,
+    },
+    HEATWAVE: {
+      citizenPowerMult: 1.05,
+      citizenWaterMult: 1.15,
+      travelCostMult: 1,
+      outdoorActivityMult: 0.7,
+      civilianTrafficMult: 0.9,
+    },
+  },
+};
+
+test("authoritative heatwave increases resident Water demand", () => {
+  const baseWorld: WorldState = {
+    worldId:"weather-world", ownerId:"weather-owner", seed:44, revision:0, lifecycle:"ACTIVE", speed:1,
+    simulationSeconds:0, lastSimulatedAt:new Date(0).toISOString(),
+    resources:{money:1200,moneyCap:5000,power:120,powerCap:120,water:120,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:1,safety:0.5,beauty:0},
+    buildings:[building("tc-weather","town_center")],
+    roads:[], blockers:[], props:[], combat:null, events:[],
+  };
+  const clearWorld: WorldState = {
+    ...baseWorld,
+    weather: {
+      season:"SUMMER",
+      seasonProgress:0.2,
+      climateSeed:44,
+      current:"CLEAR",
+      episodeIndex:0,
+      episodeSeed:1,
+      episodeRemainingSeconds:7200,
+      severeCooldownRemainingSeconds:0,
+    },
+  };
+  const heatwaveWorld: WorldState = {
+    ...baseWorld,
+    weather: {
+      ...clearWorld.weather!,
+      current:"HEATWAVE",
+      episodeSeed:2,
+    },
+  };
+  const weatherDefs: SimulationDefinitions = {
+    ...defs,
+    weather: weatherDefinitions,
+  };
+
+  const clear = advanceWorld(clearWorld, weatherDefs, 600);
+  const heat = advanceWorld(heatwaveWorld, weatherDefs, 600);
+
+  assert.ok(heat.resources.water < clear.resources.water);
+  assert.ok(heat.society.happiness <= clear.society.happiness);
 });
