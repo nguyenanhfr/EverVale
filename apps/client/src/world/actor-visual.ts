@@ -52,18 +52,125 @@ function part(
   return colorGeometry(geometry, color, matrix);
 }
 
+export type CitizenVisualRole =
+  | "school_child"
+  | "resident"
+  | "workshop_worker"
+  | "utility_technician"
+  | "teacher"
+  | "guard";
+
+function roleSalt(role: CitizenVisualRole): number {
+  switch (role) {
+    case "school_child": return 11;
+    case "workshop_worker": return 23;
+    case "utility_technician": return 37;
+    case "teacher": return 53;
+    case "guard": return 71;
+    default: return 5;
+  }
+}
+
+function addRoleDetails(
+  pieces: THREE.BufferGeometry[],
+  role: CitizenVisualRole,
+  p: (typeof palettes)[number],
+  s: number,
+): void {
+  if (role === "school_child") {
+    pieces.push(part(
+      new THREE.BoxGeometry(0.34 * s, 0.48 * s, 0.18 * s),
+      p.accent,
+      new THREE.Vector3(0, 0.98 * s, -0.24 * s),
+    ));
+    pieces.push(part(
+      new THREE.CylinderGeometry(0.25 * s, 0.29 * s, 0.11 * s, 9),
+      p.accent,
+      new THREE.Vector3(0, 1.82 * s, 0),
+    ));
+    return;
+  }
+
+  if (role === "workshop_worker") {
+    pieces.push(part(
+      new THREE.BoxGeometry(0.5 * s, 0.58 * s, 0.08 * s),
+      p.accent,
+      new THREE.Vector3(0, 0.88 * s, 0.25 * s),
+    ));
+    pieces.push(part(
+      new THREE.BoxGeometry(0.22 * s, 0.3 * s, 0.16 * s),
+      p.trouser,
+      new THREE.Vector3(0.32 * s, 0.66 * s, 0.02),
+      new THREE.Euler(0, 0, -0.1),
+    ));
+    return;
+  }
+
+  if (role === "utility_technician") {
+    pieces.push(part(
+      new THREE.CylinderGeometry(0.27 * s, 0.31 * s, 0.15 * s, 10),
+      p.accent,
+      new THREE.Vector3(0, 1.84 * s, 0),
+    ));
+    pieces.push(part(
+      new THREE.BoxGeometry(0.3 * s, 0.46 * s, 0.17 * s),
+      p.accent,
+      new THREE.Vector3(0.34 * s, 0.76 * s, -0.08 * s),
+      new THREE.Euler(0, 0, -0.12),
+    ));
+    return;
+  }
+
+  if (role === "teacher") {
+    pieces.push(part(
+      new THREE.BoxGeometry(0.32 * s, 0.42 * s, 0.08 * s),
+      p.accent,
+      new THREE.Vector3(-0.34 * s, 0.92 * s, 0.12 * s),
+      new THREE.Euler(0, 0, 0.18),
+    ));
+    pieces.push(part(
+      new THREE.BoxGeometry(0.46 * s, 0.12 * s, 0.34 * s),
+      p.shirt,
+      new THREE.Vector3(0, 1.14 * s, 0.17 * s),
+    ));
+    return;
+  }
+
+  if (role === "guard") {
+    pieces.push(part(
+      new THREE.BoxGeometry(0.55 * s, 0.62 * s, 0.2 * s),
+      0x4d5d55,
+      new THREE.Vector3(0, 1.0 * s, 0.06 * s),
+    ));
+    pieces.push(part(
+      new THREE.CylinderGeometry(0.28 * s, 0.32 * s, 0.18 * s, 10),
+      0x56645c,
+      new THREE.Vector3(0, 1.85 * s, 0),
+    ));
+    pieces.push(part(
+      new THREE.BoxGeometry(0.12 * s, 0.5 * s, 0.12 * s),
+      p.accent,
+      new THREE.Vector3(0.38 * s, 0.8 * s, 0),
+      new THREE.Euler(0, 0, -0.08),
+    ));
+  }
+}
+
 export function createCitizenVisual(
   index: number,
-  child: boolean,
+  role: CitizenVisualRole,
   castShadow: boolean,
+  worldSeed: number,
 ): THREE.Mesh {
-  const p = palettes[index % palettes.length]!;
+  const child = role === "school_child";
+  const paletteIndex = Math.abs((worldSeed * 17 + index * 31 + roleSalt(role)) | 0) % palettes.length;
+  const p = palettes[paletteIndex]!;
   const s = child ? 0.78 : 1;
   const pieces: THREE.BufferGeometry[] = [];
 
   pieces.push(part(
     new THREE.CapsuleGeometry(0.27 * s, 0.58 * s, 4, 7),
-    p.coat,
+    role === "guard" ? 0x5c665c : p.coat,
     new THREE.Vector3(0, 0.9 * s, 0),
   ));
 
@@ -94,7 +201,9 @@ export function createCitizenVisual(
     ));
   }
 
-  if (!child && index % 3 === 0) {
+  addRoleDetails(pieces, role, p, s);
+
+  if (role === "resident" && index % 3 === 0) {
     pieces.push(part(
       new THREE.CylinderGeometry(0.29 * s, 0.35 * s, 0.13 * s, 10),
       p.accent,
@@ -102,7 +211,7 @@ export function createCitizenVisual(
     ));
   }
 
-  if (!child && index % 4 === 1) {
+  if (role === "resident" && index % 4 === 1) {
     pieces.push(part(
       new THREE.BoxGeometry(0.24 * s, 0.38 * s, 0.12 * s),
       p.accent,
@@ -120,6 +229,7 @@ export function createCitizenVisual(
   mesh.receiveShadow = true;
   mesh.userData.visualBaseY = 0;
   mesh.userData.visualScale = s;
+  mesh.userData.visualRole = role;
   return mesh;
 }
 
