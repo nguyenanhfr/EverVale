@@ -4,6 +4,15 @@ export type ConstructionState = "COMPLETE" | "BUILDING";
 export type DamageState = "HEALTHY" | "DAMAGED" | "DISABLED" | "REPAIRING";
 export type CombatOutcome = "CLEAN" | "COSTLY" | "BREACH";
 export type Season = "SPRING" | "SUMMER" | "AUTUMN" | "WINTER";
+export type WeatherHazardTag =
+  | "road_blockage"
+  | "bridge_fault"
+  | "lightning_fire"
+  | "generator_fault"
+  | "fallen_tree"
+  | "storm_damage"
+  | "lift_fault";
+
 export type WeatherKind =
   | "CLEAR"
   | "PARTLY_CLOUDY"
@@ -115,6 +124,16 @@ export interface WeatherModifierDefinition {
   travelCostMult: number;
   outdoorActivityMult: number;
   civilianTrafficMult: number;
+  hazardTags?: WeatherHazardTag[];
+}
+
+export interface IncidentDefinition {
+  id: string;
+  severity: "low" | "medium" | "high";
+  eligible: string[];
+  pathBlock: boolean;
+  conditionDamageMin?: number;
+  conditionDamageMax?: number;
 }
 
 export interface WeatherDefinitions {
@@ -124,8 +143,10 @@ export interface WeatherDefinitions {
   severeEpisodeMinSeconds: number;
   severeEpisodeMaxSeconds: number;
   severeCooldownSeconds: number;
+  maxOfflineWeatherHazardsPer24h: number;
   seasonWeights: Record<Season, Partial<Record<WeatherKind, number>>>;
   modifiers: Partial<Record<WeatherKind, WeatherModifierDefinition>>;
+  hazardChancePerEpisode: Partial<Record<WeatherHazardTag, number>>;
 }
 
 export interface WeatherState {
@@ -155,6 +176,7 @@ export interface SimulationDefinitions {
   enemies: Record<string, CombatActorDefinition>;
   blockers: Record<string, BlockerDefinition>;
   props: Record<string, PropDefinition>;
+  incidents?: Record<string, IncidentDefinition>;
   gridCellMeters: number;
   referenceCycleSeconds: number;
   weather?: WeatherDefinitions;
