@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { routeAlongRoads, samplePolyline } from "@evervale/domain/road-routing";
+import { routeAlongRoads, samplePolyline, type RoadRouteBlocker } from "@evervale/domain/road-routing";
 import type { WorldState } from "@evervale/domain/world.types";
-import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protocol/world";
+import type { BlockerCatalogEntryDto, BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protocol/world";
 import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisual } from "./building-visual";
 import { resolveBuildingVisualIdentities } from "./visual-identity";
@@ -49,6 +49,7 @@ interface Props {
   mode: "SELECT" | "BUILD" | "ROAD" | "DECOR" | "MOVE_PROP";
   selectedBuild: BuildCatalogEntryDto | null;
   buildCatalog: BuildCatalogEntryDto[];
+  blockerCatalog: BlockerCatalogEntryDto[];
   selectedProp: PropCatalogEntryDto | null;
   propCatalog: PropCatalogEntryDto[];
   propRotation: number;
@@ -225,6 +226,8 @@ function schedulePosition(
   const leisureToHome = mesh.userData.leisureToHome as VisualRoute | undefined;
   const homeToShelter = mesh.userData.homeToShelter as VisualRoute | undefined;
   const child = Boolean(mesh.userData.child);
+  const workReachable = homeToWork?.connected === true;
+  const leisureReachable = workReachable && workToLeisure?.connected === true;
   const hour = ((current.simulationSeconds % 1440) / 1440) * 24;
 
   if (current.combat && current.combat.status !== "RESOLVED") {
@@ -255,19 +258,51 @@ function schedulePosition(
   if (child) {
     if (hour < 7.5) return { ...home, activity: "HOME" };
     if (hour < 8.5) return commute(7.5, 8.5, homeToWork, home, "TO_SCHOOL");
-    if (hour < 15) return { ...work, activity: "SCHOOL" };
-    if (hour < 16) return commute(15, 16, workToLeisure, work, "TO_PLAY");
-    if (hour < 18.5) return { ...leisure, activity: "PLAY" };
-    if (hour < 19.5) return commute(18.5, 19.5, leisureToHome, leisure, "HOMEWARD");
+    if (hour < 15) {
+      return workReachable
+        ? { ...work, activity: "SCHOOL" }
+        : { ...home, activity: "SCHOOL_BLOCKED" };
+    }
+    if (hour < 16) {
+      return workReachable
+        ? commute(15, 16, workToLeisure, work, "TO_PLAY")
+        : { ...home, activity: "TO_PLAY_BLOCKED" };
+    }
+    if (hour < 18.5) {
+      return leisureReachable
+        ? { ...leisure, activity: "PLAY" }
+        : { ...home, activity: "PLAY_BLOCKED" };
+    }
+    if (hour < 19.5) {
+      return leisureReachable
+        ? commute(18.5, 19.5, leisureToHome, leisure, "HOMEWARD")
+        : { ...home, activity: "HOMEWARD_BLOCKED" };
+    }
     return { ...home, activity: "HOME" };
   }
 
   if (hour < 6.5) return { ...home, activity: "HOME" };
   if (hour < 8) return commute(6.5, 8, homeToWork, home, "TO_WORK");
-  if (hour < 17) return { ...work, activity: "WORK" };
-  if (hour < 18) return commute(17, 18, workToLeisure, work, "TO_LEISURE");
-  if (hour < 20.5) return { ...leisure, activity: "LEISURE" };
-  if (hour < 21.5) return commute(20.5, 21.5, leisureToHome, leisure, "HOMEWARD");
+  if (hour < 17) {
+    return workReachable
+      ? { ...work, activity: "WORK" }
+      : { ...home, activity: "WORK_BLOCKED" };
+  }
+  if (hour < 18) {
+    return workReachable
+      ? commute(17, 18, workToLeisure, work, "TO_LEISURE")
+      : { ...home, activity: "TO_LEISURE_BLOCKED" };
+  }
+  if (hour < 20.5) {
+    return leisureReachable
+      ? { ...leisure, activity: "LEISURE" }
+      : { ...home, activity: "LEISURE_BLOCKED" };
+  }
+  if (hour < 21.5) {
+    return leisureReachable
+      ? commute(20.5, 21.5, leisureToHome, leisure, "HOMEWARD")
+      : { ...home, activity: "HOMEWARD_BLOCKED" };
+  }
   return { ...home, activity: "HOME" };
 }
 
@@ -276,6 +311,7 @@ export function WorldView({
   mode,
   selectedBuild,
   buildCatalog,
+  blockerCatalog,
   selectedProp,
   propCatalog,
   propRotation,
@@ -297,6 +333,7 @@ export function WorldView({
   const modeRef = useRef(mode);
   const selectedBuildRef = useRef(selectedBuild);
   const buildCatalogRef = useRef(buildCatalog);
+  const blockerCatalogRef = useRef(blockerCatalog);
   const selectedPropRef = useRef(selectedProp);
   const propCatalogRef = useRef(propCatalog);
   const propRotationRef = useRef(propRotation);
@@ -326,6 +363,7 @@ export function WorldView({
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { selectedBuildRef.current = selectedBuild; }, [selectedBuild]);
   useEffect(() => { buildCatalogRef.current = buildCatalog; }, [buildCatalog]);
+  useEffect(() => { blockerCatalogRef.current = blockerCatalog; }, [blockerCatalog]);
   useEffect(() => { selectedPropRef.current = selectedProp; }, [selectedProp]);
   useEffect(() => { propCatalogRef.current = propCatalog; }, [propCatalog]);
   useEffect(() => { propRotationRef.current = propRotation; }, [propRotation]);
@@ -660,6 +698,21 @@ export function WorldView({
       buildingGlowRef.current = [];
       buildersRef.current = [];
       const current = worldRef.current;
+      const roadBlockers: RoadRouteBlocker[] = (current.blockers ?? []).flatMap(
+        (blocker) => {
+          const definition = blockerCatalogRef.current.find(
+            (item) => item.id === blocker.definitionId,
+          );
+          return definition
+            ? [{
+                x: blocker.position.x,
+                z: blocker.position.z,
+                radius: definition.radius,
+              }]
+            : [];
+        },
+      );
+      host.dataset.roadBlockers = String(roadBlockers.length);
 
       for (const road of current.roads ?? []) {
         dynamic.add(createRoadVisual(road));
@@ -725,7 +778,7 @@ export function WorldView({
         for (const project of activeConstruction.slice(0, 3)) {
           const source = { x: builderSource.position.x, z: builderSource.position.z };
           const site = { x: project.position.x, z: project.position.z };
-          const route = routeAlongRoads(current.roads, source, site);
+          const route = routeAlongRoads(current.roads, source, site, roadBlockers);
           const builder = createBuilderObject();
           builder.position.set(source.x, 0, source.z);
           dynamic.add(builder);
@@ -842,10 +895,30 @@ export function WorldView({
         const workPoint = { x: work.x, z: work.z };
         const leisurePoint = { x: leisure.x, z: leisure.z };
         const shelterPoint = { x: 0, z: 0 };
-        const homeToWork = routeAlongRoads(current.roads, homePoint, workPoint);
-        const workToLeisure = routeAlongRoads(current.roads, workPoint, leisurePoint);
-        const leisureToHome = routeAlongRoads(current.roads, leisurePoint, homePoint);
-        const homeToShelter = routeAlongRoads(current.roads, homePoint, shelterPoint);
+        const homeToWork = routeAlongRoads(
+          current.roads,
+          homePoint,
+          workPoint,
+          roadBlockers,
+        );
+        const workToLeisure = routeAlongRoads(
+          current.roads,
+          workPoint,
+          leisurePoint,
+          roadBlockers,
+        );
+        const leisureToHome = routeAlongRoads(
+          current.roads,
+          leisurePoint,
+          homePoint,
+          roadBlockers,
+        );
+        const homeToShelter = routeAlongRoads(
+          current.roads,
+          homePoint,
+          shelterPoint,
+          roadBlockers,
+        );
 
         citizen.userData.home = homePoint;
         citizen.userData.work = workPoint;
@@ -964,11 +1037,14 @@ export function WorldView({
         const project = current.buildings.find((building) => building.id === builder.buildingId);
         const progress = project ? constructionVisualState(project).progress : 1;
         const travelT = Math.max(0, Math.min(1, progress / 0.08));
-        let target = builder.site;
+        let target = {
+          x: builder.object.position.x,
+          z: builder.object.position.z,
+        };
 
-        if (travelT < 1 && builder.route.connected) {
+        if (builder.route.connected && travelT < 1) {
           target = samplePolyline(builder.route.points, travelT);
-        } else if (travelT >= 1) {
+        } else if (builder.route.connected && travelT >= 1) {
           const phase = time / 900 + i * 1.7;
           target = {
             x: builder.site.x + Math.cos(phase) * 1.25,
