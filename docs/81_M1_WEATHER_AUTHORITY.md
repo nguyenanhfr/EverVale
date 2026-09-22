@@ -94,9 +94,10 @@ Not in v1:
 - client precipitation/fog/wetness rendering
 - citizen visual umbrella/raincoat behavior
 - travel-speed application
-- path-block hazard effects until road routing consumes blocker authority
+- bridge/lift fault effects until authoritative bridge/lift runtime objects exist
 - forecast UI
 - Weather Station
 
-Condition-damage weather hazards are implemented in `docs/82_M1_WEATHER_HAZARD_AUTHORITY.md`.
+Condition-damage and road-blocking weather hazards are implemented in `docs/82_M1_WEATHER_HAZARD_AUTHORITY.md` and consume the blocker-aware routing contract in `docs/83_M1_8_BLOCKED_ROAD_AUTHORITY.md`.
+
 Remaining weather features must consume this authoritative state rather than create a second weather authority.
