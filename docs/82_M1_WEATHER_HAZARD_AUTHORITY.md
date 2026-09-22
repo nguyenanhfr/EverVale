@@ -12,11 +12,13 @@ This slice extends `docs/81_M1_WEATHER_AUTHORITY.md`.
 
 ## Supported M1 weather hazards
 
-Weather episodes may currently produce only hazards backed by existing authoritative primitives:
+Weather episodes may currently produce hazards backed by existing authoritative primitives:
 
 - `lightning_fire`
 - `storm_damage`
 - `generator_fault`
+- `fallen_tree`
+- `road_blockage`
 
 These use canonical data from:
 
@@ -31,6 +33,8 @@ A supported hazard may:
 - reduce building condition by the canonical incident range
 - set `DAMAGED` or `DISABLED`
 - reset any stale repair timer
+- select an eligible road deterministically
+- create a clearable authoritative blocker on that road
 - append a bounded player-facing `WorldEvent`
 
 A weather hazard never:
@@ -81,22 +85,23 @@ Weather incident events use the existing bounded event history.
 
 Weather transitions and resulting events already count as material read-checkpoint boundaries, so visible consequences are persisted by the existing revision-CAS path.
 
-## Explicitly deferred path-block hazards
+## Path-block hazards
 
-The canonical weather data also contains:
+`fallen_tree` and `road_blockage` are now authoritative.
 
-- `fallen_tree`
-- `road_blockage`
+- `fallen_tree` creates a `fallen_tree` blocker.
+- `road_blockage` creates a generic `rubble` blocker.
+- road + placement are deterministic from the weather episode seed.
+- placement avoids overlap with existing blockers.
+- blocker clearing uses the existing `CLEAR_BLOCKER` command and timer.
+- routing consumes blocker position/radius through the contract in `docs/83_M1_8_BLOCKED_ROAD_AUTHORITY.md`.
+
+Still deferred:
+
 - `bridge_fault`
 - `lift_fault`
 
-They are **not** applied yet.
-
-Reason:
-
-The current road router derives connectivity from `WorldState.roads` and does not consume blocker state as a closed edge/segment. Creating a road blocker today would look authoritative while citizens could still route through it.
-
-Path-block hazards must wait until the routing contract accepts authoritative blocked road segments/points.
+M1 has no authoritative bridge/lift runtime objects yet, so those tags remain inert instead of creating fake state.
 
 ## Tests
 
@@ -104,7 +109,10 @@ Domain tests cover:
 
 - deterministic and idempotent condition hazards
 - per-real-day catch-up cap
-- no fake blocker generation for path-block tags
+- deterministic road blocker generation
+- route disconnect while blocker exists
+- blocker CLEARING lifecycle
+- route reconnect after blocker removal
 - no building deletion / condition below recovery floor
 - full `advanceWorld` wiring from weather episode transition to condition damage + timeline event
 
@@ -117,4 +125,4 @@ The routing dependency is now implemented in `docs/83_M1_8_BLOCKED_ROAD_AUTHORIT
 3. disconnected/re-routed actor behavior — complete
 4. blocker clear/reconnect routing tests — complete
 
-Weather creation of `fallen_tree` / `road_blockage` remains a separate follow-up slice so incident generation can be reviewed independently.
+Weather creation of `fallen_tree` / `road_blockage` is now implemented as the follow-up slice. `bridge_fault` / `lift_fault` remain deferred until their authoritative runtime objects exist.
