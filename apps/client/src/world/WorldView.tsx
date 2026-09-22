@@ -361,6 +361,8 @@ export function WorldView({
     controls.maxDistance = 120;
 
     const environment = createEnvironmentVisuals(scene, renderer, world.seed);
+    host.dataset.visualDialect = environment.dialect;
+    host.dataset.visualScatter = environment.scatterSignature;
     const ambient = createAmbientVisuals(scene);
     const ground = environment.ground;
 
