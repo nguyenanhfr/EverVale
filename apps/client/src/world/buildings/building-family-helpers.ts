@@ -221,6 +221,8 @@ export function addFamilyGabledRoof(
   baseY: number,
   mat: THREE.Material,
   rise = 1,
+  centerX = 0,
+  centerZ = 0,
 ): void {
   const run = width / 2 + 0.28;
   const length = Math.hypot(run, rise);
@@ -229,9 +231,9 @@ export function addFamilyGabledRoof(
     const slab = familyMesh(
       new THREE.BoxGeometry(length, 0.18, depth + 0.55),
       mat,
-      side * run / 2,
+      centerX + side * run / 2,
       baseY + rise / 2,
-      0,
+      centerZ,
     );
     slab.rotation.z = side < 0 ? angle : -angle;
     group.add(slab);
@@ -242,9 +244,9 @@ export function addFamilyGabledRoof(
     0.2,
     depth + 0.58,
     familyMaterial("copper", 0.56, 0.22),
-    0,
+    centerX,
     baseY + rise + 0.03,
-    0,
+    centerZ,
     false,
   );
 }
