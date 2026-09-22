@@ -3,6 +3,25 @@ export type WorldLifecycle = "ACTIVE" | "WARM" | "COLD";
 export type ConstructionState = "COMPLETE" | "BUILDING";
 export type DamageState = "HEALTHY" | "DAMAGED" | "DISABLED" | "REPAIRING";
 export type CombatOutcome = "CLEAN" | "COSTLY" | "BREACH";
+export type Season = "SPRING" | "SUMMER" | "AUTUMN" | "WINTER";
+export type WeatherKind =
+  | "CLEAR"
+  | "PARTLY_CLOUDY"
+  | "CLOUDY"
+  | "FOG"
+  | "LIGHT_RAIN"
+  | "RAIN"
+  | "HEAVY_RAIN"
+  | "THUNDERSTORM"
+  | "LIGHT_WIND"
+  | "STRONG_WIND"
+  | "WINDSTORM"
+  | "HEATWAVE"
+  | "COLD_SNAP"
+  | "LIGHT_SNOW"
+  | "SNOW"
+  | "HEAVY_SNOW"
+  | "SEVERE_STORM";
 
 export interface Vec3 {
   x: number;
@@ -90,6 +109,36 @@ export interface BlockerDefinition {
   radius: number;
 }
 
+export interface WeatherModifierDefinition {
+  citizenPowerMult: number;
+  citizenWaterMult: number;
+  travelCostMult: number;
+  outdoorActivityMult: number;
+  civilianTrafficMult: number;
+}
+
+export interface WeatherDefinitions {
+  seasonDurationSeconds: number;
+  normalEpisodeMinSeconds: number;
+  normalEpisodeMaxSeconds: number;
+  severeEpisodeMinSeconds: number;
+  severeEpisodeMaxSeconds: number;
+  severeCooldownSeconds: number;
+  seasonWeights: Record<Season, Partial<Record<WeatherKind, number>>>;
+  modifiers: Partial<Record<WeatherKind, WeatherModifierDefinition>>;
+}
+
+export interface WeatherState {
+  season: Season;
+  seasonProgress: number;
+  climateSeed: number;
+  current: WeatherKind;
+  episodeIndex: number;
+  episodeSeed: number;
+  episodeRemainingSeconds: number;
+  severeCooldownRemainingSeconds: number;
+}
+
 export interface CombatActorDefinition {
   id: string;
   side: "DEFENDER" | "ENEMY";
@@ -108,6 +157,7 @@ export interface SimulationDefinitions {
   props: Record<string, PropDefinition>;
   gridCellMeters: number;
   referenceCycleSeconds: number;
+  weather?: WeatherDefinitions;
 }
 
 export interface BuildingInstance {
@@ -189,6 +239,7 @@ export interface WorldState {
   roads: RoadSegment[];
   blockers: BlockerInstance[];
   props: PropInstance[];
+  weather?: WeatherState;
   combat: CombatState | null;
   events: WorldEvent[];
 }
