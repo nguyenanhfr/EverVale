@@ -790,14 +790,20 @@ export function WorldView({
         const jobBuilding = jobs[i % Math.max(1, jobs.length)];
         const role: CitizenVisualRole = child
           ? "school_child"
-          : citizenRoleForJob(jobBuilding?.definitionId);
+          : i >= current.society.workforce
+            ? "resident"
+            : citizenRoleForJob(jobBuilding?.definitionId);
         const citizen = createCitizenVisual(i, role, i < 18, current.seed);
         citizen.userData.index = i;
         citizen.userData.child = child;
         citizen.userData.role = role;
         const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
         const adultJob = jobBuilding?.position ?? home;
-        const work = child ? (school?.position ?? home) : adultJob;
+        const work = child
+          ? (school?.position ?? home)
+          : role === "resident"
+            ? home
+            : adultJob;
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
           : (adultAnchor?.position ?? fallbackLeisure);
