@@ -7,6 +7,7 @@ import { advancePopulation } from "./population.js";
 import { beautyFromProps } from "./props.js";
 import { advanceRepairs } from "./repair.js";
 import { allocateWorkforce, applyWorkforceToSociety, type WorkforceResult } from "./workforce.js";
+import { advanceWeather, weatherModifier } from "./weather.js";
 import type { SimulationDefinitions, WorldState } from "./world.types.js";
 
 export type WorkforceAllocator = (
@@ -31,6 +32,15 @@ export function advanceWorldWithAllocator(
     advanceRepairs(advanceConstruction(input, deltaSeconds), deltaSeconds),
     deltaSeconds,
   );
+  const weather = advanceWeather(
+    world.weather,
+    world.seed,
+    world.simulationSeconds,
+    deltaSeconds,
+    definitions.weather,
+  );
+  if (weather) world = { ...world, weather };
+  const weatherEffects = weatherModifier(weather, definitions.weather);
   const combatActive = world.combat?.status === "ACTIVE" || world.combat?.status === "WARNING";
   const workforce = workforceAllocator(
     world.society.population,
@@ -84,8 +94,10 @@ export function advanceWorldWithAllocator(
     return { ...instance, workersAssigned: assigned };
   });
 
-  const residentPowerUse = world.society.population * 0.5;
-  const residentWaterUse = world.society.population * 0.75;
+  const residentPowerUse =
+    world.society.population * 0.5 * weatherEffects.citizenPowerMult;
+  const residentWaterUse =
+    world.society.population * 0.75 * weatherEffects.citizenWaterMult;
   const totalPowerUse = buildingPowerUse + residentPowerUse;
   const totalWaterUse = buildingWaterUse + residentWaterUse;
 
@@ -147,7 +159,9 @@ export function advanceWorldWithAllocator(
       employmentSatisfaction: employment,
       housingSatisfaction: clamp01(society.housingCapacity / Math.max(1, society.population)),
       educationCoverage: society.educationCoverage,
-      recreationCoverage: society.recreationCoverage,
+      recreationCoverage: clamp01(
+        society.recreationCoverage * weatherEffects.outdoorActivityMult,
+      ),
       safety: society.safety,
       beautyBonus: society.beauty,
     }),
