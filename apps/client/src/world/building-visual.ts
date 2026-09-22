@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { BuildingInstance } from "@evervale/domain/world.types";
-import type { BuildCatalogEntryDto } from "@evervale/protocol/world";\nimport type { BuildingVisualIdentity } from "./visual-identity";\nimport { addHouseSmallVisual } from "./buildings/house-small-visual";\nimport { addTownCenterVisual } from "./buildings/town-center-visual";
+import type { BuildCatalogEntryDto } from "@evervale/protocol/world";
+import type { BuildingVisualIdentity } from "./visual-identity";
+import { addHouseSmallVisual } from "./buildings/house-small-visual";
+import { addTownCenterVisual } from "./buildings/town-center-visual";
 
 const palette = {
   plaster: 0xe4d7bb,
