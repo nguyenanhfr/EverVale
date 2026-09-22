@@ -108,12 +108,13 @@ Domain tests cover:
 - no building deletion / condition below recovery floor
 - full `advanceWorld` wiring from weather episode transition to condition damage + timeline event
 
-## Next authority step
+## Path-block routing dependency
 
-Before enabling `fallen_tree` or `road_blockage` from weather:
+The routing dependency is now implemented in `docs/83_M1_8_BLOCKED_ROAD_AUTHORITY.md`:
 
-1. define blocker-to-road ownership/intersection semantics
-2. make road routing exclude blocked edges/segments
-3. expose disconnected/re-routed actor behavior
-4. add blocker clear/reconnect tests
-5. only then enable the weather path-block tags
+1. blocker-to-road circle/intersection semantics — complete
+2. blocked road intervals excluded from the graph — complete
+3. disconnected/re-routed actor behavior — complete
+4. blocker clear/reconnect routing tests — complete
+
+Weather creation of `fallen_tree` / `road_blockage` remains a separate follow-up slice so incident generation can be reviewed independently.
