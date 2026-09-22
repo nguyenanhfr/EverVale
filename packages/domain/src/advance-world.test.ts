@@ -93,7 +93,7 @@ test("authoritative heatwave increases resident Water demand", () => {
   const baseWorld: WorldState = {
     worldId:"weather-world", ownerId:"weather-owner", seed:44, revision:0, lifecycle:"ACTIVE", speed:1,
     simulationSeconds:0, lastSimulatedAt:new Date(0).toISOString(),
-    resources:{money:1200,moneyCap:5000,power:120,powerCap:120,water:120,waterCap:120,varum:0,varumCap:0,techPoints:0,techTier:0},
+    resources:{money:1200,moneyCap:5000,power:50,powerCap:60,water:50,waterCap:60,varum:0,varumCap:0,techPoints:0,techTier:0},
     society:{population:12,housingCapacity:12,happiness:80,growthProgress:0,workforce:9,assignedWorkers:0,educationCoverage:0,recreationCoverage:1,safety:0.5,beauty:0},
     buildings:[building("tc-weather","town_center")],
     roads:[], blockers:[], props:[], combat:null, events:[],
