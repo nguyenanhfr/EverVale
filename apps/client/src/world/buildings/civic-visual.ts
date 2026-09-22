@@ -102,6 +102,8 @@ function addCourtyardSchool(group: THREE.Group, width: number, depth: number): v
       h * 0.76 + 0.34,
       familyMaterial("roof"),
       0.55,
+      x,
+      depth * 0.06,
     );
     addFamilyWindow(group, x, 1.42, depth * 0.37);
   }
@@ -151,6 +153,8 @@ function addClassroomAnnexSchool(group: THREE.Group, width: number, depth: numbe
     annexH + 0.34,
     familyMaterial("roof"),
     0.62,
+    annexX,
+    -depth * 0.04,
   );
   for (const x of [annexX - width * 0.09, annexX + width * 0.09]) {
     addFamilyWindow(group, x, 1.45, depth * 0.33);
