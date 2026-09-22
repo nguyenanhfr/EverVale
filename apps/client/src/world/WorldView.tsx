@@ -881,6 +881,20 @@ export function WorldView({
         mesh.userData.combatBob = hostile;
         dynamic.add(mesh);
       });
+
+      let builderShadowCasters = 0;
+      buildersRef.current.forEach(({ object }) => {
+        object.traverse((child) => {
+          const mesh = child as THREE.Mesh;
+          if (mesh.isMesh && mesh.castShadow) builderShadowCasters += 1;
+        });
+      });
+      const dynamicShadowCasters =
+        citizensRef.current.filter((citizen) => citizen.castShadow).length
+        + animalsRef.current.filter((animal) => animal.castShadow).length
+        + builderShadowCasters
+        + (current.combat?.actors.filter((actor) => actor.hp > 0).length ?? 0);
+      host.dataset.dynamicShadowCasters = String(dynamicShadowCasters);
     };
 
     let lastPresentationKey = "";
