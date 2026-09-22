@@ -9,6 +9,7 @@ export interface EnvironmentVisualRig {
   fog: THREE.Fog;
   renderer: THREE.WebGLRenderer;
   dialect: WorldVisualDialect;
+  scatterSignature: string;
 }
 
 const environmentPalettes: Readonly<Record<WorldVisualDialect, {
@@ -116,7 +117,7 @@ function moundGeometry(radius:number,height:number,seed:number): THREE.BufferGeo
   return geometry;
 }
 
-function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worldSeed:number): void {
+function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worldSeed:number): string {
   const group=new THREE.Group();
   group.userData.environmentVisual=true;
   const palette=environmentPalettes[dialect];
@@ -296,6 +297,13 @@ function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worl
   group.add(treeTrunks, treeCrowns);
 
   scene.add(group);
+  return [
+    dialect,
+    seedBase,
+    Math.round(seeded(1) * 10000),
+    Math.round(seeded(200) * 10000),
+    Math.round(seeded(820) * 10000),
+  ].join(":");
 }
 
 export function createEnvironmentVisuals(
@@ -355,8 +363,8 @@ export function createEnvironmentVisuals(
   skirt.receiveShadow=true;
   scene.add(skirt);
 
-  addPerimeterLandscape(scene,dialect,worldSeed);
-  return {scene,ground,sun,hemisphere,fog,renderer,dialect};
+  const scatterSignature=addPerimeterLandscape(scene,dialect,worldSeed);
+  return {scene,ground,sun,hemisphere,fog,renderer,dialect,scatterSignature};
 }
 
 function smoothstep(a:number,b:number,x:number): number {
