@@ -83,10 +83,14 @@ Existing browser routing telemetry remains:
 - disconnected route count
 - `Road routing X/Y`
 
-## Weather dependency
+## Weather integration
 
-This contract unblocks the next weather-authority slice.
+The follow-up weather-authority slice now uses this contract.
 
-`fallen_tree` and `road_blockage` weather incidents may now create authoritative blockers on roads, because those blockers will affect actor routing rather than existing only as visuals.
+- `fallen_tree` creates a clearable `fallen_tree` blocker on an eligible dirt road.
+- `road_blockage` creates a clearable `rubble` blocker on an eligible dirt road.
+- deterministic blocker placement is derived from the weather episode seed.
+- the blocker immediately participates in citizen/builder routing.
+- `CLEAR_BLOCKER` keeps the road blocked during `CLEARING` and reconnects it after removal.
 
-Weather incident generation remains a separate change so routing behavior can be reviewed independently.
+Bridge/lift fault tags remain deferred because M1 has no authoritative bridge/lift runtime objects.
