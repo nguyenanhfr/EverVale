@@ -187,9 +187,15 @@ export function applyWeatherHazards(
         continue;
       }
 
-      const beforeEvents = world.events.length;
+      const eventId = `weather-${episode.episodeSeed}-${tag}`;
+      const alreadyApplied = world.events.some((event) => event.id === eventId);
       world = applyConditionIncident(world, episode, tag, incident);
-      if (world.events.length > beforeEvents) applied += 1;
+      if (
+        !alreadyApplied &&
+        world.events.some((event) => event.id === eventId)
+      ) {
+        applied += 1;
+      }
     }
   }
 
