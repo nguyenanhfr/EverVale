@@ -122,6 +122,14 @@ Do not introduce a second route authority.
 
 If Graphology replaces the internal implementation later, it must preserve this contract and tests.
 
+## Blocker-aware routing extension
+
+Implemented in `docs/83_M1_8_BLOCKED_ROAD_AUTHORITY.md`.
+
+Active authoritative blocker circles now split and close occupied road intervals. Citizens use safe Home fallback when their daily route chain is disconnected, and construction builders wait at source rather than crossing a blocked road off-network.
+
+Clearing reconnects the graph only after the blocker is removed.
+
 ## Deferred after M1.2
 
 - road deletion/editing
