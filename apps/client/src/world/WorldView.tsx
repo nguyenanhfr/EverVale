@@ -9,6 +9,7 @@ import { createBuildingVisual } from "./building-visual";
 import { resolveBuildingVisualIdentities } from "./visual-identity";
 import { createRoadVisual } from "./road-visual";
 import { animateCitizenVisual, createCitizenVisual, createDogVisual } from "./actor-visual";
+import type { CitizenVisualRole } from "./actor-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
 import { createEnvironmentVisuals, updateEnvironmentLighting } from "./environment-visual";
 import {
@@ -25,6 +26,22 @@ export interface RuntimeMetrics {
   animatedCitizens: number;
   routedCitizens: number;
   disconnectedRoutes: number;
+}
+
+function citizenRoleForJob(definitionId: string | undefined): CitizenVisualRole {
+  switch (definitionId) {
+    case "workshop":
+      return "workshop_worker";
+    case "power_plant":
+    case "water_plant":
+      return "utility_technician";
+    case "school":
+      return "teacher";
+    case "guard_post":
+      return "guard";
+    default:
+      return "resident";
+  }
 }
 
 interface Props {
@@ -770,11 +787,16 @@ export function WorldView({
       );
       for (let i = 0; i < presentedPopulation; i += 1) {
         const child = i % 5 === 0;
-        const citizen = createCitizenVisual(i, child, i < 18);
+        const jobBuilding = jobs[i % Math.max(1, jobs.length)];
+        const role: CitizenVisualRole = child
+          ? "school_child"
+          : citizenRoleForJob(jobBuilding?.definitionId);
+        const citizen = createCitizenVisual(i, role, i < 18, current.seed);
         citizen.userData.index = i;
         citizen.userData.child = child;
+        citizen.userData.role = role;
         const home = homes[i % Math.max(1, homes.length)]?.position ?? { x: 0, y: 0, z: 0 };
-        const adultJob = jobs[i % Math.max(1, jobs.length)]?.position ?? home;
+        const adultJob = jobBuilding?.position ?? home;
         const work = child ? (school?.position ?? home) : adultJob;
         const leisure = child
           ? (childAnchor?.position ?? fallbackLeisure)
@@ -816,6 +838,9 @@ export function WorldView({
       ).length;
       host.dataset.disconnectedRoutes = String(disconnectedRoutes);
       host.dataset.routedCitizens = String(citizensRef.current.length);
+      host.dataset.citizenRoles = String(
+        new Set(citizensRef.current.map((citizen) => citizen.userData.visualRole)).size,
+      );
       routingRef.current?.(citizensRef.current.length, disconnectedRoutes);
 
       if (homes.length > 0) {
