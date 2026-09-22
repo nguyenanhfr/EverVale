@@ -1,3 +1,4 @@
+import { createWeatherState } from "@evervale/domain/weather";
 import type { SimulationDefinitions, WorldState } from "@evervale/domain/world.types";
 import type { IdGenerator } from "./ports.js";
 
@@ -78,6 +79,9 @@ export function createStarterWorld(
       { id: ids.next("blocker"), definitionId: "rubble", position: { x: -30, y: 0, z: -12 }, state: "BLOCKING", clearRemainingSeconds: 0 },
     ],
     props: [],
+    ...(defs.weather
+      ? { weather: createWeatherState(seed, 0, defs.weather) }
+      : {}),
     combat: null,
     events: [],
   };
