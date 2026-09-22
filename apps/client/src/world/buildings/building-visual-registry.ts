@@ -4,6 +4,8 @@ import { addHouseSmallVisual } from "./house-small-visual";
 import { addTownCenterVisual } from "./town-center-visual";
 import { addWorkshopVisual } from "./workshop-visual";
 import { addPowerPlantVisual, addWaterPlantVisual } from "./utility-visual";
+import { addParkVisual, addSchoolVisual } from "./civic-visual";
+import { addGuardPostVisual } from "./safety-visual";
 import { applyFamilyDialect } from "./building-family-helpers";
 
 type AuthoredFamilyRenderer = (
@@ -20,6 +22,9 @@ const authoredFamilyRenderers: Readonly<Record<string, AuthoredFamilyRenderer>> 
   workshop: addWorkshopVisual,
   power_plant: addPowerPlantVisual,
   water_plant: addWaterPlantVisual,
+  school: addSchoolVisual,
+  park: addParkVisual,
+  guard_post: addGuardPostVisual,
 };
 
 export function renderAuthoredBuildingFamily(
