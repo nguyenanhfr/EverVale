@@ -4,6 +4,7 @@ import { addHouseSmallVisual } from "./house-small-visual";
 import { addTownCenterVisual } from "./town-center-visual";
 import { addWorkshopVisual } from "./workshop-visual";
 import { addPowerPlantVisual, addWaterPlantVisual } from "./utility-visual";
+import { applyFamilyDialect } from "./building-family-helpers";
 
 type AuthoredFamilyRenderer = (
   group: THREE.Group,
@@ -31,5 +32,6 @@ export function renderAuthoredBuildingFamily(
   const renderer = authoredFamilyRenderers[definitionId];
   if (!renderer) return false;
   renderer(group, width, depth, identity);
+  applyFamilyDialect(group, identity?.dialect);
   return true;
 }
