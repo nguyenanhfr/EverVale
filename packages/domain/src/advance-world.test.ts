@@ -65,6 +65,7 @@ const weatherDefinitions: WeatherDefinitions = {
   severeEpisodeMinSeconds: 1800,
   severeEpisodeMaxSeconds: 1800,
   severeCooldownSeconds: 28800,
+  maxOfflineWeatherHazardsPer24h: 2,
   seasonWeights: {
     SPRING: { CLEAR: 1 },
     SUMMER: { CLEAR: 1 },
@@ -87,6 +88,7 @@ const weatherDefinitions: WeatherDefinitions = {
       civilianTrafficMult: 0.9,
     },
   },
+  hazardChancePerEpisode: {},
 };
 
 test("authoritative heatwave increases resident Water demand", () => {
