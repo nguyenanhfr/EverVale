@@ -326,6 +326,7 @@ export default function App() {
         mode={mode}
         selectedBuild={selectedBuild}
         buildCatalog={view.buildCatalog}
+        blockerCatalog={view.blockerCatalog}
         selectedProp={activePreviewProp}
         propCatalog={view.propCatalog}
         propRotation={activePreviewRotation}
