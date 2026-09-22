@@ -88,10 +88,7 @@ function summaryFor(
 
 
 function roadEligibilityKey(type: WorldState["roads"][number]["type"]): string {
-  switch (type) {
-    case "DIRT":
-      return "road_dirt";
-  }
+  return type === "DIRT" ? "road_dirt" : "road_unknown";
 }
 
 function distanceXZ(
