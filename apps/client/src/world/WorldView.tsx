@@ -6,6 +6,7 @@ import type { WorldState } from "@evervale/domain/world.types";
 import type { BuildCatalogEntryDto, PropCatalogEntryDto } from "@evervale/protocol/world";
 import { createPropObject, makeSelectionRing } from "./prop-factory";
 import { createBuildingVisual } from "./building-visual";
+import { resolveBuildingVisualIdentities } from "./visual-identity";
 import { createRoadVisual } from "./road-visual";
 import { animateCitizenVisual, createCitizenVisual, createDogVisual } from "./actor-visual";
 import { createAmbientVisuals, updateAmbientVisuals } from "./ambient-visual";
@@ -650,13 +651,21 @@ export function WorldView({
       const activeConstruction = current.buildings.filter(
         (building) => building.constructionState === "BUILDING",
       );
+      const buildingVisualIdentities = resolveBuildingVisualIdentities(
+        current.seed,
+        current.buildings,
+      );
+      const firstVisualIdentity = buildingVisualIdentities.values().next().value;
+      if (firstVisualIdentity) {
+        host.dataset.visualDialect = firstVisualIdentity.dialect;
+      }
 
       current.buildings.forEach((building) => {
         const meta = buildCatalogRef.current.find((item) => item.id === building.definitionId);
         const visual =
           building.constructionState === "BUILDING"
             ? createConstructionObject(building, meta)
-            : createBuildingVisual(building, meta);
+            : createBuildingVisual(building, meta, buildingVisualIdentities.get(building.id));
         visual.userData.buildingId = building.id;
         visual.traverse((child) => {
           child.userData.buildingId = building.id;
