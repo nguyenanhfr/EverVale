@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { WorldVisualDialect } from "../visual-identity";
 
 const palette = {
   plaster: 0xe4d7bb,
@@ -20,7 +21,55 @@ const palette = {
   window: 0xffd89a,
 };
 
+type PaletteKey = keyof typeof palette;
+
+const dialectPalette: Readonly<Record<WorldVisualDialect, Partial<Record<PaletteKey, number>>>> = {
+  hearthstone: {},
+  willowbrook: {
+    plaster: 0xd9dfc8,
+    plasterWarm: 0xcbd6b9,
+    timber: 0x80684c,
+    timberDark: 0x5f503f,
+    stone: 0x929a8a,
+    stoneDark: 0x687466,
+    roof: 0x667269,
+    roofWarm: 0x77806f,
+    grass: 0x72976d,
+    awning: 0x9f7764,
+  },
+  amberfield: {
+    plaster: 0xdfcb9f,
+    plasterWarm: 0xd4b57d,
+    timber: 0x765039,
+    timberDark: 0x4d372c,
+    stone: 0x9f9078,
+    stoneDark: 0x746655,
+    brick: 0xb3744e,
+    roof: 0x785044,
+    roofWarm: 0x9a6045,
+    copper: 0xa57943,
+    grass: 0x87915f,
+    soil: 0x8b6846,
+    awning: 0xb66e4d,
+  },
+  bluebell: {
+    plaster: 0xe3e2d4,
+    plasterWarm: 0xd5d8cb,
+    timber: 0x746b5f,
+    timberDark: 0x514c46,
+    stone: 0x969b9a,
+    stoneDark: 0x687172,
+    roof: 0x5d6970,
+    roofWarm: 0x6c756f,
+    copper: 0x927452,
+    water: 0x6fa8b1,
+    grass: 0x6f9180,
+    awning: 0x7d7f93,
+  },
+};
+
 const materialCache = new Map<string, THREE.MeshStandardMaterial>();
+const dialectMaterialCache = new Map<string, THREE.MeshStandardMaterial>();
 
 export function familyMaterial(
   key: keyof typeof palette,
@@ -36,6 +85,7 @@ export function familyMaterial(
       metalness,
     });
     value.userData.sharedMaterial = true;
+    value.userData.paletteKey = key;
     materialCache.set(cacheKey, value);
   }
   return value;
@@ -52,9 +102,39 @@ function windowMaterial(): THREE.MeshStandardMaterial {
       roughness: 0.42,
     });
     value.userData.sharedMaterial = true;
+    value.userData.paletteKey = "window";
     materialCache.set(key, value);
   }
   return value;
+}
+
+export function applyFamilyDialect(
+  group: THREE.Group,
+  dialect: WorldVisualDialect | undefined,
+): void {
+  if (!dialect || dialect === "hearthstone") return;
+  const overrides = dialectPalette[dialect];
+
+  group.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material)) return;
+    const base = mesh.material as THREE.MeshStandardMaterial;
+    const paletteKey = base.userData.paletteKey as PaletteKey | undefined;
+    if (!paletteKey) return;
+    const color = overrides[paletteKey];
+    if (color === undefined) return;
+
+    const cacheKey = `${base.uuid}:${dialect}`;
+    let mapped = dialectMaterialCache.get(cacheKey);
+    if (!mapped) {
+      mapped = base.clone();
+      mapped.color.setHex(color);
+      mapped.userData.sharedMaterial = true;
+      mapped.userData.paletteKey = paletteKey;
+      dialectMaterialCache.set(cacheKey, mapped);
+    }
+    mesh.material = mapped;
+  });
 }
 
 export function familyMesh(
