@@ -207,19 +207,19 @@ function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worl
   });
   const grass = new THREE.InstancedMesh(grassBladeGeo, grassBladeMat, 120);
   for (let i = 0; i < 120; i += 1) {
-    const angle = pseudo(i + 500) * Math.PI * 2;
-    const radius = 29 + pseudo(i + 520) * 19;
+    const angle = seeded(i + 500) * Math.PI * 2;
+    const radius = 29 + seeded(i + 520) * 19;
     dummy.position.set(
       Math.cos(angle) * radius,
       0.24,
       Math.sin(angle) * radius,
     );
     dummy.rotation.set(
-      (pseudo(i + 540) - 0.5) * 0.16,
-      pseudo(i + 560) * Math.PI * 2,
-      (pseudo(i + 580) - 0.5) * 0.18,
+      (seeded(i + 540) - 0.5) * 0.16,
+      seeded(i + 560) * Math.PI * 2,
+      (seeded(i + 580) - 0.5) * 0.18,
     );
-    const s = 0.7 + pseudo(i + 600) * 0.85;
+    const s = 0.7 + seeded(i + 600) * 0.85;
     dummy.scale.set(s, s, s);
     dummy.updateMatrix();
     grass.setMatrixAt(i, dummy.matrix);
@@ -237,15 +237,15 @@ function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worl
   });
   const flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, 48);
   for (let i = 0; i < 48; i += 1) {
-    const angle = pseudo(i + 700) * Math.PI * 2;
-    const radius = 27 + pseudo(i + 720) * 17;
+    const angle = seeded(i + 700) * Math.PI * 2;
+    const radius = 27 + seeded(i + 720) * 17;
     dummy.position.set(
       Math.cos(angle) * radius,
-      0.34 + pseudo(i + 740) * 0.08,
+      0.34 + seeded(i + 740) * 0.08,
       Math.sin(angle) * radius,
     );
-    dummy.rotation.set(0, pseudo(i + 760) * Math.PI * 2, 0);
-    const s = 0.7 + pseudo(i + 780) * 0.55;
+    dummy.rotation.set(0, seeded(i + 760) * Math.PI * 2, 0);
+    const s = 0.7 + seeded(i + 780) * 0.55;
     dummy.scale.setScalar(s);
     dummy.updateMatrix();
     flowers.setMatrixAt(i, dummy.matrix);
@@ -265,14 +265,14 @@ function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worl
   });
   const treeCrowns = new THREE.InstancedMesh(crownGeo, crownMat, 22);
   for (let i = 0; i < 22; i += 1) {
-    const angle = (i / 22) * Math.PI * 2 + (pseudo(i + 820) - 0.5) * 0.2;
-    const radius = 43 + pseudo(i + 840) * 7;
+    const angle = (i / 22) * Math.PI * 2 + (seeded(i + 820) - 0.5) * 0.2;
+    const radius = 43 + seeded(i + 840) * 7;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
-    const s = 0.78 + pseudo(i + 860) * 0.65;
+    const s = 0.78 + seeded(i + 860) * 0.65;
 
     dummy.position.set(x, 1.05 * s, z);
-    dummy.rotation.set(0, pseudo(i + 880) * Math.PI * 2, 0);
+    dummy.rotation.set(0, seeded(i + 880) * Math.PI * 2, 0);
     dummy.scale.set(s, s, s);
     dummy.updateMatrix();
     treeTrunks.setMatrixAt(i, dummy.matrix);
@@ -280,8 +280,8 @@ function addPerimeterLandscape(scene:THREE.Scene,dialect:WorldVisualDialect,worl
     dummy.position.set(x, 2.55 * s, z);
     dummy.rotation.set(
       0,
-      pseudo(i + 900) * Math.PI * 2,
-      (pseudo(i + 920) - 0.5) * 0.12,
+      seeded(i + 900) * Math.PI * 2,
+      (seeded(i + 920) - 0.5) * 0.12,
     );
     dummy.scale.set(1.05 * s, 0.88 * s, 1.05 * s);
     dummy.updateMatrix();
