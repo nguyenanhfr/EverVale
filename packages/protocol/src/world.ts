@@ -47,6 +47,7 @@ export interface BlockerCatalogEntryDto {
   varumCost: number;
   clearCycles: number;
   techTier: number;
+  radius: number;
 }
 
 export interface WorldViewDto {
