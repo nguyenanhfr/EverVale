@@ -36,11 +36,19 @@ export function createRoadVisual(road: RoadSegment): THREE.Group {
   const length = Math.max(0.1, Math.hypot(dx, dz));
   const yaw = Math.atan2(dx, dz);
 
+  const shoulder = new THREE.Mesh(
+    new THREE.BoxGeometry(3.5, 0.028, length + 0.18),
+    materials.verge,
+  );
+  shoulder.position.y = 0.016;
+  shoulder.receiveShadow = true;
+  group.add(shoulder);
+
   const base = new THREE.Mesh(
-    new THREE.BoxGeometry(2.7, 0.075, length),
+    new THREE.BoxGeometry(2.62, 0.055, length),
     materials.dirt,
   );
-  base.position.y = 0.045;
+  base.position.y = 0.043;
   base.receiveShadow = true;
   group.add(base);
 
@@ -49,19 +57,9 @@ export function createRoadVisual(road: RoadSegment): THREE.Group {
       new THREE.BoxGeometry(0.22, 0.035, Math.max(0.5, length - 0.4)),
       materials.rut,
     );
-    rut.position.set(x, 0.087, 0);
+    rut.position.set(x, 0.073, 0);
     rut.receiveShadow = true;
     group.add(rut);
-  }
-
-  for (const x of [-1.48, 1.48]) {
-    const verge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.045, length),
-      materials.verge,
-    );
-    verge.position.set(x, 0.028, 0);
-    verge.receiveShadow = true;
-    group.add(verge);
   }
 
   const stoneCount = Math.max(2, Math.min(10, Math.floor(length / 4)));
