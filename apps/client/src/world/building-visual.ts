@@ -4,6 +4,7 @@ import type { BuildingInstance } from "@evervale/domain/world.types";
 import type { BuildCatalogEntryDto } from "@evervale/protocol/world";
 import type { BuildingVisualIdentity } from "./visual-identity";
 import { renderAuthoredBuildingFamily } from "./buildings/building-visual-registry";
+import { addBuildingGroundContact } from "./ground-contact-visual";
 
 const palette = {
   plaster: 0xe4d7bb,
@@ -394,6 +395,8 @@ export function createBuildingVisual(
   const group=new THREE.Group();
   const width=meta ? meta.footprintCellsX*meta.gridCellMeters : building.definitionId==="town_center" ? 8 : 5;
   const depth=meta ? meta.footprintCellsZ*meta.gridCellMeters : building.definitionId==="town_center" ? 8 : 4;
+
+  addBuildingGroundContact(group, building.definitionId, width, depth, identity);
 
   if (!renderAuthoredBuildingFamily(building.definitionId, group, width, depth, identity)) {
     switch(building.definitionId) {
