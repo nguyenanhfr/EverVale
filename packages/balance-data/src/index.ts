@@ -88,6 +88,16 @@ const numberValue = (value: unknown, fallback = 0): number =>
 
 
 function mapWeather(raw: RawWeather): WeatherDefinitions {
+  const canonicalSeasonOrder: readonly Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
+  if (
+    raw.calendar.season_order.length !== canonicalSeasonOrder.length ||
+    raw.calendar.season_order.some(
+      (season, index) => season !== canonicalSeasonOrder[index],
+    )
+  ) {
+    throw new Error("INVALID_WEATHER_SEASON_ORDER");
+  }
+
   const neutral: WeatherModifierDefinition = {
     citizenPowerMult: 1,
     citizenWaterMult: 1,
