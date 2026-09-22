@@ -12,6 +12,10 @@ export interface RoadRoute {
   totalDistance: number;
 }
 
+export interface RoadRouteBlocker extends Point2 {
+  radius: number;
+}
+
 interface BreakPoint extends Point2 {
   t: number;
 }
@@ -40,6 +44,59 @@ const pointAt = (road: RoadSegment, t: number): Point2 => ({
   x: road.from.x + (road.to.x - road.from.x) * t,
   z: road.from.z + (road.to.z - road.from.z) * t,
 });
+
+function pointBlocked(
+  point: Point2,
+  blockers: readonly RoadRouteBlocker[],
+): boolean {
+  return blockers.some(
+    (blocker) =>
+      blocker.radius > EPSILON &&
+      distance(point, blocker) < blocker.radius - EPSILON,
+  );
+}
+
+function blockerBreaks(
+  road: RoadSegment,
+  blocker: RoadRouteBlocker,
+): BreakPoint[] {
+  if (blocker.radius <= EPSILON) return [];
+
+  const dx = road.to.x - road.from.x;
+  const dz = road.to.z - road.from.z;
+  const fx = road.from.x - blocker.x;
+  const fz = road.from.z - blocker.z;
+  const a = dx * dx + dz * dz;
+  if (a <= EPSILON) return [];
+
+  const b = 2 * (fx * dx + fz * dz);
+  const cc = fx * fx + fz * fz - blocker.radius * blocker.radius;
+  const discriminant = b * b - 4 * a * cc;
+  if (discriminant < -EPSILON) return [];
+
+  const root = Math.sqrt(Math.max(0, discriminant));
+  const candidates = [
+    (-b - root) / (2 * a),
+    (-b + root) / (2 * a),
+  ];
+
+  const result: BreakPoint[] = [];
+  for (const t of candidates) {
+    if (t < -EPSILON || t > 1 + EPSILON) continue;
+    const clamped = Math.max(0, Math.min(1, t));
+    const point = pointAt(road, clamped);
+    if (
+      !result.some(
+        (existing) =>
+          Math.abs(existing.t - clamped) <= EPSILON ||
+          distance(existing, point) <= 0.001,
+      )
+    ) {
+      result.push({ ...point, t: clamped });
+    }
+  }
+  return result;
+}
 
 function segmentIntersection(
   a: RoadSegment,
@@ -102,10 +159,15 @@ function projectPointToRoad(
   };
 }
 
-function nearestProjection(roads: RoadSegment[], point: Point2): Projection | null {
+function nearestProjection(
+  roads: RoadSegment[],
+  point: Point2,
+  blockers: readonly RoadRouteBlocker[],
+): Projection | null {
   let best: Projection | null = null;
   roads.forEach((road, index) => {
     const candidate = projectPointToRoad(point, road, index);
+    if (pointBlocked(candidate, blockers)) return;
     if (!best || candidate.distance < best.distance) best = candidate;
   });
   return best;
@@ -205,6 +267,7 @@ export function routeAlongRoads(
   roads: RoadSegment[],
   origin: Point2,
   destination: Point2,
+  blockers: readonly RoadRouteBlocker[] = [],
 ): RoadRoute {
   if (roads.length === 0) {
     return {
@@ -215,8 +278,8 @@ export function routeAlongRoads(
     };
   }
 
-  const originProjection = nearestProjection(roads, origin);
-  const destinationProjection = nearestProjection(roads, destination);
+  const originProjection = nearestProjection(roads, origin, blockers);
+  const destinationProjection = nearestProjection(roads, destination, blockers);
   if (!originProjection || !destinationProjection) {
     return {
       connected: false,
@@ -244,6 +307,14 @@ export function routeAlongRoads(
     }
   }
 
+  roads.forEach((road, roadIndex) => {
+    for (const blocker of blockers) {
+      for (const point of blockerBreaks(road, blocker)) {
+        pushBreak(breaks[roadIndex]!, point);
+      }
+    }
+  });
+
   pushBreak(breaks[originProjection.segmentIndex]!, {
     x: originProjection.x,
     z: originProjection.z,
@@ -267,6 +338,12 @@ export function routeAlongRoads(
       const a = list[i];
       const b = list[i + 1];
       if (!a || !b) continue;
+      const midpoint = {
+        x: (a.x + b.x) / 2,
+        z: (a.z + b.z) / 2,
+      };
+      if (pointBlocked(midpoint, blockers)) continue;
+
       const ak = nodeKey(a);
       const bk = nodeKey(b);
       const weight = distance(a, b);
