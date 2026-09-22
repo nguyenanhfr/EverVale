@@ -99,6 +99,7 @@ const weatherDefinitions: WeatherDefinitions = {
   severeEpisodeMinSeconds: 1,
   severeEpisodeMaxSeconds: 1,
   severeCooldownSeconds: 28800,
+  maxOfflineWeatherHazardsPer24h: 2,
   seasonWeights: {
     SPRING: { CLEAR: 1, LIGHT_RAIN: 1 },
     SUMMER: { CLEAR: 1 },
@@ -106,6 +107,7 @@ const weatherDefinitions: WeatherDefinitions = {
     WINTER: { SNOW: 1 },
   },
   modifiers: {},
+  hazardChancePerEpisode: {},
 };
 
 const defsWithWeather: SimulationDefinitions = {
