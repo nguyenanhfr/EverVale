@@ -94,8 +94,9 @@ Not in v1:
 - client precipitation/fog/wetness rendering
 - citizen visual umbrella/raincoat behavior
 - travel-speed application
-- hazard incidents from storm tags
+- path-block hazard effects until road routing consumes blocker authority
 - forecast UI
 - Weather Station
 
-Those must consume this authoritative state rather than create a second weather authority.
+Condition-damage weather hazards are implemented in `docs/82_M1_WEATHER_HAZARD_AUTHORITY.md`.
+Remaining weather features must consume this authoritative state rather than create a second weather authority.
