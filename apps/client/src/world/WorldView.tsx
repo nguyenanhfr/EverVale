@@ -736,6 +736,20 @@ export function WorldView({
         }
       }
 
+      const shadowCasterBudget = 24;
+      let builderShadowCasters = 0;
+      buildersRef.current.forEach(({ object }) => {
+        object.traverse((child) => {
+          const mesh = child as THREE.Mesh;
+          if (mesh.isMesh && mesh.castShadow) builderShadowCasters += 1;
+        });
+      });
+      const aliveCombatActors = current.combat?.actors.filter((actor) => actor.hp > 0) ?? [];
+      const combatShadowBudget = Math.min(
+        aliveCombatActors.length,
+        Math.max(0, shadowCasterBudget - builderShadowCasters),
+      );
+
       for (const prop of current.props ?? []) {
         const meta = propCatalogRef.current.find((item) => item.id === prop.definitionId);
         if (!meta) continue;
@@ -757,6 +771,12 @@ export function WorldView({
 
       const homes = current.buildings.filter(
         (b) => b.definitionId === "house_small" && b.constructionState === "COMPLETE",
+      );
+      const dogShadowBudget =
+        homes.length > 0 && builderShadowCasters + combatShadowBudget < shadowCasterBudget ? 1 : 0;
+      const citizenShadowBudget = Math.max(
+        0,
+        shadowCasterBudget - builderShadowCasters - combatShadowBudget - dogShadowBudget,
       );
       const jobs = current.buildings.filter(
         (b) =>
@@ -803,7 +823,7 @@ export function WorldView({
         const role: CitizenVisualRole = child
           ? "school_child"
           : citizenRoleForJob(jobBuilding?.definitionId);
-        const citizen = createCitizenVisual(i, role, i < 18, current.seed);
+        const citizen = createCitizenVisual(i, role, i < citizenShadowBudget, current.seed);
         citizen.userData.index = i;
         citizen.userData.child = child;
         citizen.userData.role = role;
@@ -859,11 +879,13 @@ export function WorldView({
 
       if (homes.length > 0) {
         const dog = createDogVisual();
+        dog.castShadow = dogShadowBudget > 0;
         dog.userData.home = homes[0]?.position ?? { x: 0, y: 0, z: 0 };
         dynamic.add(dog);
         animalsRef.current.push(dog);
       }
 
+      let combatShadowIndex = 0;
       current.combat?.actors.forEach((actor) => {
         if (actor.hp <= 0) return;
         const hostile = actor.side === "ENEMY";
@@ -877,23 +899,17 @@ export function WorldView({
           }),
         );
         mesh.position.set(actor.position.x, hostile ? 0.7 : 0.8, actor.position.z);
-        mesh.castShadow = true;
+        mesh.castShadow = combatShadowIndex < combatShadowBudget;
+        combatShadowIndex += 1;
         mesh.userData.combatBob = hostile;
         dynamic.add(mesh);
       });
 
-      let builderShadowCasters = 0;
-      buildersRef.current.forEach(({ object }) => {
-        object.traverse((child) => {
-          const mesh = child as THREE.Mesh;
-          if (mesh.isMesh && mesh.castShadow) builderShadowCasters += 1;
-        });
-      });
       const dynamicShadowCasters =
         citizensRef.current.filter((citizen) => citizen.castShadow).length
         + animalsRef.current.filter((animal) => animal.castShadow).length
         + builderShadowCasters
-        + (current.combat?.actors.filter((actor) => actor.hp > 0).length ?? 0);
+        + combatShadowBudget;
       host.dataset.dynamicShadowCasters = String(dynamicShadowCasters);
     };
 
