@@ -28,6 +28,7 @@ test("M1.4 stress: 40 citizens stay routed and renderer memory remains bounded",
   const triangles = Number(await worldView.getAttribute("data-triangles"));
   const geometriesStart = Number(await worldView.getAttribute("data-geometries"));
   const texturesStart = Number(await worldView.getAttribute("data-textures"));
+  const dynamicShadowCasters = Number(await worldView.getAttribute("data-dynamic-shadow-casters"));
   const frameStart = Number(await worldView.getAttribute("data-frame-count"));
 
   expect(drawCalls).toBeGreaterThan(0);
@@ -36,6 +37,8 @@ test("M1.4 stress: 40 citizens stay routed and renderer memory remains bounded",
   expect(triangles).toBeLessThanOrEqual(1_500_000);
   expect(geometriesStart).toBeGreaterThan(0);
   expect(texturesStart).toBeGreaterThanOrEqual(0);
+  expect(dynamicShadowCasters).toBeGreaterThan(0);
+  expect(dynamicShadowCasters).toBeLessThanOrEqual(24);
 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("HeapProfiler.collectGarbage");
@@ -73,6 +76,7 @@ test("M1.4 stress: 40 citizens stay routed and renderer memory remains bounded",
     geometriesEnd,
     texturesStart,
     texturesEnd,
+    dynamicShadowCasters,
     heapStart: heapStart.usedSize,
     heapEnd: heapEnd.usedSize,
     heapDelta,
