@@ -11,7 +11,14 @@ const SUPPORTED_M1_HAZARDS = new Set<WeatherHazardTag>([
   "lightning_fire",
   "storm_damage",
   "generator_fault",
+  "fallen_tree",
+  "road_blockage",
 ]);
+
+const PATH_BLOCKER_DEFINITION: Partial<Record<WeatherHazardTag, string>> = {
+  fallen_tree: "fallen_tree",
+  road_blockage: "rubble",
+};
 
 function hashText(input: string): number {
   let hash = 0x811c9dc5;
@@ -77,6 +84,109 @@ function summaryFor(
     default:
       return `Weather incident affected ${subject}.`;
   }
+}
+
+
+function roadEligibilityKey(type: WorldState["roads"][number]["type"]): string {
+  switch (type) {
+    case "DIRT":
+      return "road_dirt";
+  }
+}
+
+function distanceXZ(
+  a: { x: number; z: number },
+  b: { x: number; z: number },
+): number {
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
+function applyPathBlockIncident(
+  world: WorldState,
+  episode: WeatherEpisodeStart,
+  tag: WeatherHazardTag,
+  incident: IncidentDefinition,
+  definitions: SimulationDefinitions,
+): WorldState {
+  const eventId = `weather-${episode.episodeSeed}-${tag}`;
+  const blockerId = `weather-blocker-${episode.episodeSeed}-${tag}`;
+  if (
+    world.events.some((event) => event.id === eventId) ||
+    world.blockers.some((blocker) => blocker.id === blockerId)
+  ) {
+    return world;
+  }
+
+  const blockerDefinitionId = PATH_BLOCKER_DEFINITION[tag];
+  if (!blockerDefinitionId) return world;
+  const blockerDefinition = definitions.blockers[blockerDefinitionId];
+  if (!blockerDefinition) return world;
+
+  const eligibleRoads = world.roads
+    .filter((road) => incident.eligible.includes(roadEligibilityKey(road.type)))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (eligibleRoads.length === 0) return world;
+
+  const startIndex = Math.floor(
+    random01(episode.episodeSeed, `${tag}:road`) * eligibleRoads.length,
+  );
+
+  for (let offset = 0; offset < eligibleRoads.length; offset += 1) {
+    const road = eligibleRoads[(startIndex + offset) % eligibleRoads.length]!;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const t =
+        0.2 +
+        random01(
+          episode.episodeSeed,
+          `${tag}:position:${road.id}:${attempt}`,
+        ) *
+          0.6;
+      const position = {
+        x: road.from.x + (road.to.x - road.from.x) * t,
+        y: 0,
+        z: road.from.z + (road.to.z - road.from.z) * t,
+      };
+
+      const overlapsExisting = world.blockers.some((blocker) => {
+        const existingDefinition = definitions.blockers[blocker.definitionId];
+        const existingRadius = existingDefinition?.radius ?? 0;
+        return (
+          distanceXZ(position, blocker.position) <
+          blockerDefinition.radius + existingRadius + 0.25
+        );
+      });
+      if (overlapsExisting) continue;
+
+      return {
+        ...world,
+        blockers: [
+          ...world.blockers,
+          {
+            id: blockerId,
+            definitionId: blockerDefinitionId,
+            position,
+            state: "BLOCKING" as const,
+            clearRemainingSeconds: 0,
+          },
+        ],
+        events: [
+          ...world.events.slice(-49),
+          {
+            id: eventId,
+            type: `WEATHER_${tag.toUpperCase()}`,
+            happenedAt: happenedAt(world, episode.startedAtSimulationSeconds),
+            severity: eventSeverity(incident),
+            summary:
+              tag === "fallen_tree"
+                ? "Strong weather brought a tree down across a road."
+                : "Weather debris blocked a road.",
+          },
+        ],
+      };
+    }
+  }
+
+  return world;
 }
 
 function applyConditionIncident(
@@ -179,17 +289,28 @@ export function applyWeatherHazards(
       if (random01(episode.episodeSeed, `${tag}:chance`) >= chance) continue;
 
       const incident = incidents[tag];
-      if (!incident || incident.pathBlock) continue;
-      if (
-        incident.conditionDamageMin === undefined ||
-        incident.conditionDamageMax === undefined
-      ) {
-        continue;
-      }
+      if (!incident) continue;
 
       const eventId = `weather-${episode.episodeSeed}-${tag}`;
       const alreadyApplied = world.events.some((event) => event.id === eventId);
-      world = applyConditionIncident(world, episode, tag, incident);
+
+      if (incident.pathBlock) {
+        world = applyPathBlockIncident(
+          world,
+          episode,
+          tag,
+          incident,
+          definitions,
+        );
+      } else {
+        if (
+          incident.conditionDamageMin === undefined ||
+          incident.conditionDamageMax === undefined
+        ) {
+          continue;
+        }
+        world = applyConditionIncident(world, episode, tag, incident);
+      }
       if (
         !alreadyApplied &&
         world.events.some((event) => event.id === eventId)
