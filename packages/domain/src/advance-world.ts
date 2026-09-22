@@ -7,7 +7,8 @@ import { advancePopulation } from "./population.js";
 import { beautyFromProps } from "./props.js";
 import { advanceRepairs } from "./repair.js";
 import { allocateWorkforce, applyWorkforceToSociety, type WorkforceResult } from "./workforce.js";
-import { advanceWeather, weatherModifier } from "./weather.js";
+import { advanceWeatherWithEpisodes, weatherModifier } from "./weather.js";
+import { applyWeatherHazards } from "./weather-hazards.js";
 import type { SimulationDefinitions, WorldState } from "./world.types.js";
 
 export type WorkforceAllocator = (
@@ -32,15 +33,26 @@ export function advanceWorldWithAllocator(
     advanceRepairs(advanceConstruction(input, deltaSeconds), deltaSeconds),
     deltaSeconds,
   );
-  const weather = advanceWeather(
+  const weatherAdvance = advanceWeatherWithEpisodes(
     world.weather,
     world.seed,
     world.simulationSeconds,
     deltaSeconds,
     definitions.weather,
   );
-  if (weather) world = { ...world, weather };
-  const weatherEffects = weatherModifier(weather, definitions.weather);
+  if (weatherAdvance.weather) {
+    world = { ...world, weather: weatherAdvance.weather };
+  }
+  world = applyWeatherHazards(
+    world,
+    weatherAdvance.startedEpisodes,
+    definitions,
+    deltaSeconds,
+  );
+  const weatherEffects = weatherModifier(
+    weatherAdvance.weather,
+    definitions.weather,
+  );
   const combatActive = world.combat?.status === "ACTIVE" || world.combat?.status === "WARNING";
   const workforce = workforceAllocator(
     world.society.population,
