@@ -3,8 +3,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { BuildingInstance } from "@evervale/domain/world.types";
 import type { BuildCatalogEntryDto } from "@evervale/protocol/world";
 import type { BuildingVisualIdentity } from "./visual-identity";
-import { addHouseSmallVisual } from "./buildings/house-small-visual";
-import { addTownCenterVisual } from "./buildings/town-center-visual";
+import { renderAuthoredBuildingFamily } from "./buildings/building-visual-registry";
 
 const palette = {
   plaster: 0xe4d7bb,
@@ -440,23 +439,23 @@ export function createBuildingVisual(
   const width=meta ? meta.footprintCellsX*meta.gridCellMeters : building.definitionId==="town_center" ? 8 : 5;
   const depth=meta ? meta.footprintCellsZ*meta.gridCellMeters : building.definitionId==="town_center" ? 8 : 4;
 
-  switch(building.definitionId) {
-    case "town_center": addTownCenterVisual(group,width,depth,identity); break;
-    case "house_small": addHouseSmallVisual(group,width,depth,identity); break;
-    case "workshop": addWorkshop(group,width,depth); break;
-    case "power_plant": addPowerPlant(group,width,depth); break;
-    case "water_plant": addWaterPlant(group,width,depth); break;
-    case "school": addSchool(group,width,depth); break;
-    case "park": addPark(group,width,depth); break;
-    case "guard_post": addGuardPost(group,width,depth); break;
-    case "farm": addFarm(group,width,depth); break;
-    case "restaurant": addRestaurant(group,width,depth); break;
-    case "builders_yard": addBuildersYard(group,width,depth); break;
-    default:
-      addFoundation(group,width,depth);
-      box(group,width*0.88,2.8,depth*0.84,material("plasterWarm"),0,1.74,0);
-      addGabledRoof(group,width*0.94,depth*0.9,3.14,material("roof"),0.9);
-      break;
+  if (!renderAuthoredBuildingFamily(building.definitionId, group, width, depth, identity)) {
+    switch(building.definitionId) {
+      case "workshop": addWorkshop(group,width,depth); break;
+      case "power_plant": addPowerPlant(group,width,depth); break;
+      case "water_plant": addWaterPlant(group,width,depth); break;
+      case "school": addSchool(group,width,depth); break;
+      case "park": addPark(group,width,depth); break;
+      case "guard_post": addGuardPost(group,width,depth); break;
+      case "farm": addFarm(group,width,depth); break;
+      case "restaurant": addRestaurant(group,width,depth); break;
+      case "builders_yard": addBuildersYard(group,width,depth); break;
+      default:
+        addFoundation(group,width,depth);
+        box(group,width*0.88,2.8,depth*0.84,material("plasterWarm"),0,1.74,0);
+        addGabledRoof(group,width*0.94,depth*0.9,3.14,material("roof"),0.9);
+        break;
+    }
   }
 
   const markerHeight=building.definitionId==="town_center" ? 6.5 : building.definitionId==="park" ? 2.5 : 4.6;
