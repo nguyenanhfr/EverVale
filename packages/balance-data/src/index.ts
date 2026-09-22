@@ -6,10 +6,12 @@ import type {
   BuildingDefinition,
   BlockerDefinition,
   CombatActorDefinition,
+  IncidentDefinition,
   PropDefinition,
   Season,
   SimulationDefinitions,
   WeatherDefinitions,
+  WeatherHazardTag,
   WeatherKind,
   WeatherModifierDefinition,
 } from "@evervale/domain/world.types";
@@ -58,6 +60,7 @@ type RawWeather = {
   };
   severe: {
     cooldown_real_hours_min: number;
+    max_offline_severe_events_per_24h: number;
   };
   season_weights: Record<Season, Partial<Record<WeatherKind, number>>>;
   modifiers: Partial<Record<WeatherKind, {
@@ -66,7 +69,20 @@ type RawWeather = {
     travel_cost_mult?: number;
     outdoor_activity_mult?: number;
     civilian_traffic_mult?: number;
+    hazard_tags?: WeatherHazardTag[];
   }>>;
+  hazard_chance_per_episode: Partial<Record<WeatherHazardTag, number>>;
+};
+
+type RawIncidents = {
+  incidents: Record<string, {
+    severity: "low" | "medium" | "high";
+    effects?: {
+      path_block?: boolean;
+      condition_damage?: [number, number];
+    };
+    eligible?: string[];
+  }>;
 };
 
 type RawProps = {
@@ -121,6 +137,10 @@ function mapWeather(raw: RawWeather): WeatherDefinitions {
       Math.max(1, numberValue(raw.episode_duration_minutes.severe_max, 60)) * 60,
     severeCooldownSeconds:
       Math.max(0, numberValue(raw.severe.cooldown_real_hours_min, 8)) * 60 * 60,
+    maxOfflineWeatherHazardsPer24h: Math.max(
+      0,
+      Math.floor(numberValue(raw.severe.max_offline_severe_events_per_24h, 2)),
+    ),
     seasonWeights: raw.season_weights,
     modifiers: Object.fromEntries(
       Object.entries(raw.modifiers).map(([kind, modifier]) => [
@@ -146,9 +166,30 @@ function mapWeather(raw: RawWeather): WeatherDefinitions {
             modifier?.civilian_traffic_mult,
             neutral.civilianTrafficMult,
           ),
+          ...(modifier?.hazard_tags
+            ? { hazardTags: modifier.hazard_tags }
+            : {}),
         },
       ]),
     ) as Partial<Record<WeatherKind, WeatherModifierDefinition>>,
+    hazardChancePerEpisode: raw.hazard_chance_per_episode,
+  };
+}
+
+
+function mapIncident(id: string, raw: RawIncidents["incidents"][string]): IncidentDefinition {
+  const damage = raw.effects?.condition_damage;
+  return {
+    id,
+    severity: raw.severity,
+    eligible: raw.eligible ?? [],
+    pathBlock: raw.effects?.path_block === true,
+    ...(damage
+      ? {
+          conditionDamageMin: numberValue(damage[0]),
+          conditionDamageMax: numberValue(damage[1]),
+        }
+      : {}),
   };
 }
 
@@ -319,6 +360,7 @@ export function loadGameData(): LoadedGameData {
   const footprintData = readYaml<RawFootprints>("data/content/v0.2/build_footprints.yaml");
   const propData = readYaml<RawProps>("data/content/v0.2/props.yaml");
   const weatherData = readYaml<RawWeather>("data/weather/v0.1/weather.yaml");
+  const incidentData = readYaml<RawIncidents>("data/incidents/v0.1/incidents.yaml");
 
   const buildings = Object.fromEntries(
     Object.entries(balance.buildings).map(([id, raw]) => {
@@ -344,6 +386,12 @@ export function loadGameData(): LoadedGameData {
       Object.entries(propData.props).map(([id, raw]) => [
         id,
         mapProp(id, raw, propData.default_snap_meters),
+      ]),
+    ),
+    incidents: Object.fromEntries(
+      Object.entries(incidentData.incidents).map(([id, raw]) => [
+        id,
+        mapIncident(id, raw),
       ]),
     ),
     gridCellMeters: footprintData.grid_cell_meters,
