@@ -47,7 +47,7 @@ export function advanceWorldWithAllocator(
     world,
     weatherAdvance.startedEpisodes,
     definitions,
-    deltaSeconds,
+    realDeltaSeconds,
   );
   const weatherEffects = weatherModifier(
     weatherAdvance.weather,
