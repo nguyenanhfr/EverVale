@@ -18,6 +18,7 @@ test("M1.4 stress: 40 citizens stay routed and renderer memory remains bounded",
   await expect(page.locator("canvas")).toBeVisible();
   await expect.poll(async () => Number(await worldView.getAttribute("data-citizens"))).toBe(40);
   await expect.poll(async () => Number(await worldView.getAttribute("data-disconnected-routes"))).toBe(0);
+  await expect.poll(async () => Number(await worldView.getAttribute("data-citizen-roles"))).toBeGreaterThanOrEqual(4);
   await expect(page.getByTestId("routing-status")).toContainText("40/40");
 
   // Let shaders/materials settle before taking the baseline.
