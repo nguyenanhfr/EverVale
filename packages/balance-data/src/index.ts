@@ -328,6 +328,7 @@ export interface BlockerCatalogEntry {
   varumCost: number;
   clearCycles: number;
   techTier: number;
+  radius: number;
 }
 
 export interface PropCatalogEntry {
@@ -453,6 +454,7 @@ export function loadGameData(): LoadedGameData {
       varumCost: item.varumCost,
       clearCycles: item.clearCycles,
       techTier: item.techTier,
+      radius: item.radius,
     }))
     .sort((a, b) => a.techTier - b.techTier || a.moneyCost - b.moneyCost);
 
