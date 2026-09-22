@@ -22,6 +22,19 @@ const NEUTRAL_MODIFIER: WeatherModifierDefinition = {
   civilianTrafficMult: 1,
 };
 
+export interface WeatherEpisodeStart {
+  season: Season;
+  current: WeatherKind;
+  episodeIndex: number;
+  episodeSeed: number;
+  startedAtSimulationSeconds: number;
+}
+
+export interface WeatherAdvanceResult {
+  weather: WeatherState | undefined;
+  startedEpisodes: WeatherEpisodeStart[];
+}
+
 function hashText(input: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i += 1) {
@@ -173,22 +186,29 @@ export function createWeatherState(
   );
 }
 
-export function advanceWeather(
+export function advanceWeatherWithEpisodes(
   input: WeatherState | undefined,
   climateSeed: number,
   simulationStartSeconds: number,
   deltaSeconds: number,
   definitions: WeatherDefinitions | undefined,
-): WeatherState | undefined {
-  if (!definitions) return input;
+): WeatherAdvanceResult {
+  if (!definitions) {
+    return { weather: input, startedEpisodes: [] };
+  }
   if (deltaSeconds <= 0) {
-    return input ?? createWeatherState(climateSeed, simulationStartSeconds, definitions);
+    return {
+      weather:
+        input ?? createWeatherState(climateSeed, simulationStartSeconds, definitions),
+      startedEpisodes: [],
+    };
   }
 
   let state =
     input ?? createWeatherState(climateSeed, simulationStartSeconds, definitions);
   let remaining = deltaSeconds;
   let simulated = simulationStartSeconds;
+  const startedEpisodes: WeatherEpisodeStart[] = [];
 
   while (remaining > 0) {
     const episodeRemaining = Math.max(0.001, state.episodeRemainingSeconds);
@@ -231,10 +251,33 @@ export function advanceWeather(
         state.current,
         nextCooldown,
       );
+      startedEpisodes.push({
+        season: state.season,
+        current: state.current,
+        episodeIndex: state.episodeIndex,
+        episodeSeed: state.episodeSeed,
+        startedAtSimulationSeconds: simulated,
+      });
     }
   }
 
-  return state;
+  return { weather: state, startedEpisodes };
+}
+
+export function advanceWeather(
+  input: WeatherState | undefined,
+  climateSeed: number,
+  simulationStartSeconds: number,
+  deltaSeconds: number,
+  definitions: WeatherDefinitions | undefined,
+): WeatherState | undefined {
+  return advanceWeatherWithEpisodes(
+    input,
+    climateSeed,
+    simulationStartSeconds,
+    deltaSeconds,
+    definitions,
+  ).weather;
 }
 
 export function weatherModifier(
