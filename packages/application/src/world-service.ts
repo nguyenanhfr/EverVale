@@ -10,6 +10,7 @@ import { placeBuilding } from "@evervale/domain/construction";
 import { queueRepair } from "@evervale/domain/repair";
 import { deleteProp, moveProp, placeProp, rotateProp } from "@evervale/domain/props";
 import { drawRoad } from "@evervale/domain/roads";
+import { createWeatherState } from "@evervale/domain/weather";
 import type { SimulationDefinitions, WorldState } from "@evervale/domain/world.types";
 import type { WorldCommand } from "@evervale/protocol/world";
 import { createStarterWorld } from "./create-starter-world.js";
@@ -48,6 +49,13 @@ function materialSimulationBoundaryCrossed(before: WorldState, after: WorldState
   if (before.events.at(-1)?.id !== after.events.at(-1)?.id) return true;
   if (before.resources.techTier !== after.resources.techTier) return true;
   if (before.society.population !== after.society.population) return true;
+  if (
+    before.weather?.season !== after.weather?.season ||
+    before.weather?.current !== after.weather?.current ||
+    before.weather?.episodeIndex !== after.weather?.episodeIndex
+  ) {
+    return true;
+  }
 
   const beforeBuildings = new Map(before.buildings.map((building) => [building.id, building]));
   for (const building of after.buildings) {
@@ -301,6 +309,17 @@ export class WorldService {
       roads: world.roads ?? [],
       blockers: world.blockers ?? [],
       props: world.props ?? [],
+      ...(world.weather
+        ? { weather: world.weather }
+        : this.options.definitions.weather
+          ? {
+              weather: createWeatherState(
+                world.seed,
+                world.simulationSeconds,
+                this.options.definitions.weather,
+              ),
+            }
+          : {}),
       buildings: world.buildings.map((building) => {
         const definition = this.options.definitions.buildings[building.definitionId];
         const inferredTotal = (definition?.buildCycles ?? 0) * this.options.definitions.referenceCycleSeconds;
