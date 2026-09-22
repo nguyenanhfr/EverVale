@@ -154,9 +154,7 @@ function nextEpisode(
       episodeIndex,
       current,
     ),
-    severeCooldownRemainingSeconds: isSevere(current)
-      ? definitions.severeCooldownSeconds
-      : severeCooldownRemainingSeconds,
+    severeCooldownRemainingSeconds,
   };
 }
 
@@ -219,13 +217,19 @@ export function advanceWeather(
     };
 
     if (state.episodeRemainingSeconds <= 0.001) {
+      const nextCooldown = isSevere(state.current)
+        ? Math.max(
+            state.severeCooldownRemainingSeconds,
+            definitions.severeCooldownSeconds,
+          )
+        : state.severeCooldownRemainingSeconds;
       state = nextEpisode(
         definitions,
         state.climateSeed,
         state.episodeIndex + 1,
         simulated,
         state.current,
-        state.severeCooldownRemainingSeconds,
+        nextCooldown,
       );
     }
   }
