@@ -72,6 +72,15 @@ test("M1 loop: build, Decor, persistence, offline catch-up, combat, repair", asy
   await expect(page.getByTestId("build-categories").getByRole("button", { name: "all", exact: true })).toBeVisible();
   await expect(page.getByTestId("build-categories").getByRole("button", { name: "residential", exact: true })).toBeVisible();
 
+  // Management overlays are presentation-only but must reach the renderer.
+  await page.getByRole("button", { name: "Overlay", exact: true }).click();
+  await expect(page.getByTestId("overlay-picker")).toBeVisible();
+  await page.getByTestId("overlay-picker").getByRole("button", { name: /Workforce/i }).click();
+  await expect(worldView).toHaveAttribute("data-overlay-mode", "WORKFORCE");
+  await page.getByRole("button", { name: "Overlay", exact: true }).click();
+  await page.getByTestId("overlay-picker").getByRole("button", { name: /None/i }).click();
+  await expect(worldView).toHaveAttribute("data-overlay-mode", "NONE");
+
   const cottageButton = page.getByRole("button", { name: /Hearth Cottage/i });
   await expect(cottageButton).toContainText("3×2 grid · 6×4m");
 

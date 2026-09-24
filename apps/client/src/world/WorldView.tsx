@@ -18,6 +18,14 @@ import {
   createConstructionObject,
 } from "./construction-visual";
 
+export type OverlayMode =
+  | "NONE"
+  | "WORKFORCE"
+  | "SAFETY"
+  | "EDUCATION"
+  | "RECREATION"
+  | "OPERATION";
+
 export interface RuntimeMetrics {
   fps: number;
   frameMsP95: number;
@@ -55,6 +63,7 @@ interface Props {
   propRotation: number;
   selectedPropId: string | null;
   selectedBuildingId: string | null;
+  overlayMode: OverlayMode;
   movingPropId: string | null;
   roadStart: { x: number; z: number } | null;
   visualPopulationOverride: number | null;
@@ -63,6 +72,40 @@ interface Props {
   onBuildingSelect(buildingId: string | null): void;
   onRouting?(routedCitizens: number, disconnectedRoutes: number): void;
   onMetrics: ((metrics: RuntimeMetrics) => void) | undefined;
+}
+
+function makeOverlayDisc(radius: number, color: number, opacity = 0.18): THREE.Mesh {
+  const geometry = new THREE.CircleGeometry(Math.max(1.5, radius), 36);
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.065;
+  mesh.userData.managementOverlay = true;
+  return mesh;
+}
+
+function makeOverlayRing(width: number, depth: number, color: number): THREE.Mesh {
+  const radius = Math.max(1.6, Math.hypot(width, depth) * 0.36);
+  const mesh = new THREE.Mesh(
+    new THREE.RingGeometry(radius * 0.82, radius, 36),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.075;
+  mesh.userData.managementOverlay = true;
+  return mesh;
 }
 
 function makeBlocker(blocker: WorldState["blockers"][number]): THREE.Object3D {
@@ -331,6 +374,7 @@ export function WorldView({
   propRotation,
   selectedPropId,
   selectedBuildingId,
+  overlayMode,
   movingPropId,
   roadStart,
   visualPopulationOverride,
@@ -353,6 +397,7 @@ export function WorldView({
   const propRotationRef = useRef(propRotation);
   const selectedPropIdRef = useRef(selectedPropId);
   const selectedBuildingIdRef = useRef(selectedBuildingId);
+  const overlayModeRef = useRef(overlayMode);
   const movingPropIdRef = useRef(movingPropId);
   const propSelectRef = useRef(onPropSelect);
   const buildingSelectRef = useRef(onBuildingSelect);
@@ -383,6 +428,7 @@ export function WorldView({
   useEffect(() => { propRotationRef.current = propRotation; }, [propRotation]);
   useEffect(() => { selectedPropIdRef.current = selectedPropId; }, [selectedPropId]);
   useEffect(() => { selectedBuildingIdRef.current = selectedBuildingId; }, [selectedBuildingId]);
+  useEffect(() => { overlayModeRef.current = overlayMode; }, [overlayMode]);
   useEffect(() => { movingPropIdRef.current = movingPropId; }, [movingPropId]);
   useEffect(() => { propSelectRef.current = onPropSelect; }, [onPropSelect]);
   useEffect(() => { buildingSelectRef.current = onBuildingSelect; }, [onBuildingSelect]);
@@ -703,6 +749,7 @@ export function WorldView({
         current.revision,
         selectedPropIdRef.current ?? "",
         selectedBuildingIdRef.current ?? "",
+        overlayModeRef.current,
         population,
         buildingState,
         blockerState,
@@ -766,15 +813,49 @@ export function WorldView({
           if (mesh.userData.buildingGlow) buildingGlowRef.current.push(mesh);
           if (mesh.userData.propWater) propWaterRef.current.push(mesh);
         });
+        const width = (meta?.footprintCellsX ?? 3) * (meta?.gridCellMeters ?? 2);
+        const depth = (meta?.footprintCellsZ ?? 2) * (meta?.gridCellMeters ?? 2);
+
         if (building.id === selectedBuildingIdRef.current) {
-          const width = (meta?.footprintCellsX ?? 3) * (meta?.gridCellMeters ?? 2);
-          const depth = (meta?.footprintCellsZ ?? 2) * (meta?.gridCellMeters ?? 2);
           visual.add(makeSelectionRing(width, depth));
         }
+
+        const currentOverlay = overlayModeRef.current;
+        if (meta && currentOverlay !== "NONE" && building.constructionState === "COMPLETE") {
+          if (currentOverlay === "WORKFORCE" && meta.workers > 0) {
+            const ratio = Math.max(0, Math.min(1, building.workersAssigned / meta.workers));
+            const color = ratio >= 0.99 ? 0x78a66c : ratio > 0 ? 0xd0a34f : 0xcc6659;
+            visual.add(makeOverlayRing(width, depth, color));
+          }
+
+          if (currentOverlay === "OPERATION") {
+            const color =
+              building.damageState === "HEALTHY"
+                ? 0x78a66c
+                : building.damageState === "REPAIRING"
+                  ? 0xd0a34f
+                  : 0xcc6659;
+            visual.add(makeOverlayRing(width, depth, color));
+          }
+
+          if (currentOverlay === "SAFETY" && meta.safetyAdd > 0) {
+            visual.add(makeOverlayDisc(5 + meta.safetyAdd * 22, 0x6f93bf, 0.16));
+          }
+
+          if (currentOverlay === "EDUCATION" && meta.educationCoverageAdd > 0) {
+            visual.add(makeOverlayDisc(5 + meta.educationCoverageAdd * 18, 0xb99bd3, 0.16));
+          }
+
+          if (currentOverlay === "RECREATION" && meta.recreationCoverageAdd > 0) {
+            visual.add(makeOverlayDisc(5 + meta.recreationCoverageAdd * 18, 0x77a86f, 0.16));
+          }
+        }
+
         dynamic.add(visual);
       });
 
-      host.dataset.activeConstruction = String(activeConstruction.length);
+      host.dataset.overlayMode = overlayModeRef.current;
+            host.dataset.activeConstruction = String(activeConstruction.length);
       if (activeConstruction[0]) {
         host.dataset.constructionStage = constructionVisualState(activeConstruction[0]).stage;
       } else {
