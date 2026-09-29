@@ -761,3 +761,24 @@ The project should **not** add more economy/progression feature code until:
 Next authority:
 - `docs/81_DEV_BALANCE_SIMULATION_TOOLING_CONTRACT.md`
 - `docs/82_SERVER_AUTHORITATIVE_BALANCE_DATA_CONTRACT.md`
+
+
+---
+
+# 11. Leadership strategic-path decision — 2026-09-21
+
+The studio re-audit is extended by a product-level decision:
+
+- the player must choose a development path rather than treating buildings as a completion checklist
+- specializing in one path must delay or weaken another path
+- exceptional multi-path strength must be earned through skill, PvE rewards, rare opportunities, expansion, and later raid/PvP systems
+- PvE combat currently lacks a complete reward loop
+- Quest is not implemented
+- Tutorial is not implemented
+- gameplay Events are not implemented as a strategic framework
+- Raid/PvP remains future-only and should be presented as COMING SOON until the PvE core is stable
+
+The next design deliverable is **Core Gameplay Constitution v1**, before new gameplay feature implementation.
+
+Canonical debt ledger and execution order:
+`docs/83_CORE_GAMEPLAY_STRATEGIC_PATHS_AND_DEBT.md`
